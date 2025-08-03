@@ -1,0 +1,44 @@
+{
+  "realm": "vegnbio",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "vegnbio-app",
+      "publicClient": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "customer"
+      },
+      {
+        "name": "restaurant_owner"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "ari",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "ari",
+      "lastName": "ff",
+      "email": "ff@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ari1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "customer"
+      ]
+    }
+  ]
+}

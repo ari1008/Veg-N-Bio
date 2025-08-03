@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    format_sql: true
+    properties:
+      hibernate:
+        jakarta.persistence.converter.auto_apply: true
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port:  ${SPRING_PORT}
+
+keycloak:
+  server-url: ${KEYCLOAK_URL}
+  realm: ${KEYCLOAK_REALM}
+  realm-admin: ${KEYCLOAK_REALM_ADMIN}
+  username: ${KEYCLOAK_USERNAME}
+  password: ${${KEYCLOAK_PASSWORD}
+  client-id: ${KEYCLOAK_CLIENT_ID}
