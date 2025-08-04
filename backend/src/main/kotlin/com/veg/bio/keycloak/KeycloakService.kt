@@ -41,19 +41,22 @@ class KeycloakService(
 
         val entity = HttpEntity(body, headers)
         val restTemplate = RestTemplate()
+        try {
+            val response = restTemplate.postForEntity(url, entity, String::class.java)
 
-        val response = restTemplate.postForEntity(url, entity, String::class.java)
+            if (!response.statusCode.is2xxSuccessful) {
+                throw ErrorLogin()
+            }
 
-        if (!response.statusCode.is2xxSuccessful) {
+            val json = jacksonObjectMapper().readTree(response.body)
+            val accessToken = json["access_token"].asText()
+            val refreshToken = json["refresh_token"].asText()
+            val expiresIn = json["expires_in"].asLong()
+
+            return LoginResponse(accessToken, refreshToken, expiresIn)
+        }catch (_: Exception){
             throw ErrorLogin()
         }
-
-        val json = jacksonObjectMapper().readTree(response.body)
-        val accessToken = json["access_token"].asText()
-        val refreshToken = json["refresh_token"].asText()
-        val expiresIn = json["expires_in"].asLong()
-
-        return LoginResponse(accessToken, refreshToken, expiresIn)
     }
 
 
