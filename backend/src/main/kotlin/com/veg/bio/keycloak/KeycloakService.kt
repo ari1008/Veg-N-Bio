@@ -54,7 +54,7 @@ class KeycloakService(
             val expiresIn = json["expires_in"].asLong()
 
             return LoginResponse(accessToken, refreshToken, expiresIn)
-        }catch (_: Exception){
+        } catch (_: Exception) {
             throw ErrorLogin()
         }
     }
@@ -73,23 +73,28 @@ class KeycloakService(
                 "&refresh_token=$refreshToken"
 
         val entity = HttpEntity(body, headers)
-        val response = RestTemplate().postForEntity(url, entity, String::class.java)
+        try {
+            val response = RestTemplate().postForEntity(url, entity, String::class.java)
 
-        if (!response.statusCode.is2xxSuccessful) {
-            throw ErrorLogin()
+            if (!response.statusCode.is2xxSuccessful) {
+                throw ErrorRefreshToken()
+            }
+            val json = jacksonObjectMapper().readTree(response.body!!)
+            val newAccessToken = json["access_token"].asText()
+            val newRefreshToken = json["refresh_token"].asText()
+            val expiresIn = json["expires_in"].asLong()
+
+
+            return LoginResponse(
+                accessToken = newAccessToken,
+                refreshToken = newRefreshToken,
+                expiresIn = expiresIn,
+            )
+        } catch (_: Exception) {
+            throw ErrorRefreshToken()
         }
 
-        val json = jacksonObjectMapper().readTree(response.body!!)
-        val newAccessToken = json["access_token"].asText()
-        val newRefreshToken = json["refresh_token"].asText()
-        val expiresIn = json["expires_in"].asLong()
 
-
-        return LoginResponse(
-            accessToken = newAccessToken,
-            refreshToken = newRefreshToken,
-            expiresIn = expiresIn,
-        )
     }
 
     fun logoutUser(refreshToken: String) {
@@ -104,11 +109,16 @@ class KeycloakService(
                 "&refresh_token=$refreshToken"
 
         val entity = HttpEntity(body, headers)
-        val response = RestTemplate().postForEntity(url, entity, String::class.java)
+        try {
+            val response = RestTemplate().postForEntity(url, entity, String::class.java)
 
-        if (!response.statusCode.is2xxSuccessful) {
+            if (!response.statusCode.is2xxSuccessful) {
+                throw ErrorLogin()
+            }
+        } catch (_: Exception) {
             throw ErrorLogin()
         }
+
     }
 
 
