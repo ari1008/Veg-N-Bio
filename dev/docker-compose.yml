@@ -1,0 +1,54 @@
+services:
+  # ---------- Base de données Keycloak ----------
+  postgres-keycloak:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_keycloak_data:/var/lib/postgresql/data
+    networks:
+      - keycloak-net
+
+  # ---------- Base de données backend ----------
+  postgres-backend:
+    image: postgres:15
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: vegbio
+      POSTGRES_USER: vegbio
+      POSTGRES_PASSWORD: vegbio
+    networks:
+      - backend-net
+
+  # ---------- Keycloak ----------
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.1
+    command:
+      - start-dev
+      - --import-realm
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - ./keycloak-import:/opt/keycloak/data/import
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres-keycloak
+    networks:
+      - keycloak-net
+
+volumes:
+  postgres_keycloak_data:
+  postgres_backend_data:
+
+networks:
+  keycloak-net:
+  backend-net:
