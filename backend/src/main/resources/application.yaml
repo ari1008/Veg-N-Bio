@@ -21,6 +21,9 @@ spring:
 server:
   port:  ${SPRING_PORT}
 
+frontend:
+  url: ${FRONT_URL}
+
 keycloak:
   server-url: ${KEYCLOAK_URL}
   realm: ${KEYCLOAK_REALM}
