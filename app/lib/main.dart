@@ -1,6 +1,11 @@
+import 'package:app/utils/session_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SessionManager.instance.init();
+  await dotenv.load(fileName: '.env');
   runApp(const MyApp());
 }
 
