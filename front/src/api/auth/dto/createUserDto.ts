@@ -37,6 +37,7 @@ export const CreateUserDTO = z.object({
             message:
                 'Le mot de passe doit contenir une majuscule, une minuscule, un chiffre et un caractère spécial.',
         }),
+    role: z.string().default("RESTAURANT_OWNER"),
 });
 
 export type CreateUser = z.infer<typeof CreateUserDTO>;

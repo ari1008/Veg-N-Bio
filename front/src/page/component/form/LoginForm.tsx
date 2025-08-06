@@ -22,15 +22,31 @@ export default function LoginForm() {
     });
 
     const mutation = useMutation({
-        mutationFn: (data: LoginDto) => postLogin(data),
+        mutationFn: (data: LoginDto) => {
+            const enrichedData: LoginDto = {
+                ...data,
+                role: "RESTAURANT_OWNER",
+            };
+            return postLogin(enrichedData);
+        },
         onSuccess: (data: LoginResponse) => {
             toast.success("Connexion réussie !");
             setAuthData(data);
-                navigate("/");
+            navigate("/");
         },
         onError: (error: any) => {
-            toast.error(error?.response?.data?.message || "Erreur lors de la connexion");
-            console.log("no")
+            const status = error?.response?.status;
+            const apiMessage = error?.response?.data?.message;
+            console.log(error?.response?.data?.message)
+            if (status === 401) {
+                toast.error("Vous n'avez pas le droit d'accéder à la plateforme.");
+            } else if (status === 400) {
+                toast.error("Identifiants incorrects. Veuillez réessayer.");
+            } else {
+                toast.error(apiMessage || "Erreur lors de la connexion.");
+            }
+
+            console.error("Erreur mutation login", error);
         },
     });
 
@@ -58,9 +74,9 @@ export default function LoginForm() {
                 />
                 {errors.username && (
                     <label className="label">
-            <span id="username-error" className="label-text-alt text-error" role="alert">
-              {errors.username.message}
-            </span>
+                        <span id="username-error" className="label-text-alt text-error" role="alert">
+                            {errors.username.message}
+                        </span>
                     </label>
                 )}
             </div>
@@ -79,9 +95,9 @@ export default function LoginForm() {
                 />
                 {errors.password && (
                     <label className="label">
-            <span id="password-error" className="label-text-alt text-error" role="alert">
-              {errors.password.message}
-            </span>
+                        <span id="password-error" className="label-text-alt text-error" role="alert">
+                            {errors.password.message}
+                        </span>
                     </label>
                 )}
             </div>

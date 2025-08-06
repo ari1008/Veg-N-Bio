@@ -31,8 +31,15 @@ export default function RegisterForm() {
 
     const onSubmit = async (data: ConfirmPasswordUser) => {
         try {
-            const { confirmPassword, ...createUserData } = data;
-            console.log(createUserData)
+            const { confirmPassword, ...createUserDataWithoutConfirm } = data;
+
+            const createUserData = {
+                ...createUserDataWithoutConfirm,
+                role: "RESTAURANT_OWNER",
+            };
+
+            console.log(createUserData);
+
             await mutation.mutateAsync(createUserData);
             toast.success("Compte créé avec succès !");
             reset();
@@ -41,6 +48,7 @@ export default function RegisterForm() {
             toast.error(err?.message || "Erreur inconnue lors de la création du compte");
         }
     };
+
 
     return (
         <form
