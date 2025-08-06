@@ -4,6 +4,7 @@ class User {
   final String username;
   final String firstname;
   final String lastname;
+  final String role;
 
   const User({
     required this.email,
@@ -11,6 +12,7 @@ class User {
     required this.username,
     required this.firstname,
     required this.lastname,
+    required this.role = "CUSTOMER"
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class User {
       username: json['username'] as String,
       firstname: json['firstName'] as String,
       lastname: json['lastName'] as String,
+      role: json['role'] as String,
     );
   }
 
@@ -29,6 +32,7 @@ class User {
       'username': username,
       'firstName': firstname,
       'lastName': lastname,
+      'role': role,
     };
 
     if (password != null && password!.isNotEmpty) {

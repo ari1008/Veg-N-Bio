@@ -16,6 +16,7 @@ class ApiAuthDataSource implements AuthDataSource {
       data: {
         "username": username,
         "password": password,
+        "role": "CUSTOMER"
       },
     );
     final statusCode = response.statusCode;
