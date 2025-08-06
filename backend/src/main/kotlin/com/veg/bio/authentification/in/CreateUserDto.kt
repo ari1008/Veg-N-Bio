@@ -5,6 +5,7 @@ import com.veg.bio.authentification.domain.LastName
 import com.veg.bio.authentification.domain.Username
 import com.veg.bio.authentification.domain.Email
 import com.veg.bio.authentification.domain.Password
+import com.veg.bio.keycloak.Role
 
 data class CreateUserDto(
     val username: Username,
@@ -12,4 +13,5 @@ data class CreateUserDto(
     val firstName: FirstName,
     val lastName: LastName,
     val password: Password,
+    val role: Role,
 )

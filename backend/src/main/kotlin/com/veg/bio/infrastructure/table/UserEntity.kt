@@ -4,6 +4,7 @@ import com.veg.bio.authentification.domain.Email
 import com.veg.bio.authentification.domain.FirstName
 import com.veg.bio.authentification.domain.LastName
 import com.veg.bio.authentification.domain.Username
+import com.veg.bio.keycloak.Role
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
@@ -30,5 +31,7 @@ data class UserEntity(
 
     val lastName: LastName,
 
-    val clientId: String
+    val clientId: String,
+
+    val role: Role,
 )

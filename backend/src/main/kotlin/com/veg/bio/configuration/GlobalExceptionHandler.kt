@@ -1,6 +1,7 @@
 package com.veg.bio.configuration
 
 import com.veg.bio.authentification.ErrorLogin
+import com.veg.bio.authentification.ErrorPlatformForThisUser
 import com.veg.bio.authentification.UserExist
 import com.veg.bio.keycloak.ErrorKeycloak
 import com.veg.bio.keycloak.ErrorRefreshToken
@@ -60,6 +61,14 @@ class GlobalExceptionHandler {
     fun handleUserExist(): Map<String, String>{
         return mapOf(
             "error" to "User with email or username exist"
+        )
+    }
+
+    @ExceptionHandler(ErrorPlatformForThisUser::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun handleErrorPlatformForThisUser(): Map<String, String> {
+        return mapOf(
+            "error" to "User is not good for this plateforme"
         )
     }
 }

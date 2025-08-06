@@ -15,7 +15,7 @@ class CorsConfig(
     fun corsConfigurer(): WebMvcConfigurer = object : WebMvcConfigurer {
         override fun addCorsMappings(registry: CorsRegistry) {
             registry.addMapping("/**")
-                .allowedOrigins(frontendUrl)
+                .allowedOrigins(frontendUrl, "http://localhost:56045")
                 .allowedMethods("*")
                 .allowCredentials(true)
         }

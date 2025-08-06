@@ -27,7 +27,7 @@ export default function Navbar() {
                         <Link to="/login" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
                             Connexion
                         </Link>
-                        <Link to="/create-account" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
+                        <Link to="/register" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
                             Créer un compte
                         </Link>
                     </>

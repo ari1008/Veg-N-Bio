@@ -23,6 +23,6 @@ value class LastName(val value: String) {
     override fun toString(): String = value
 
     companion object {
-        private val NAME_REGEX = Regex("^[A-Z][a-zA-Z-'éèêëàâäïîôöùûüç ]*\$")
+        private val NAME_REGEX = Regex("^[a-zA-Z-'éèêëàâäïîôöùûüç ]*\$")
     }
 }
