@@ -12,7 +12,7 @@ class User {
     required this.username,
     required this.firstname,
     required this.lastname,
-    required this.role = "CUSTOMER"
+    this.role = "CUSTOMER"
   });
 
   factory User.fromJson(Map<String, dynamic> json) {

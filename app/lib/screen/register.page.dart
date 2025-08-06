@@ -1,11 +1,10 @@
 import 'package:app/shared/user_login_bloc/user_login_bloc.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-import '../model/user.dart';
+import '../shared/user_validation_bloc/user_validation_bloc.dart';
 import '../utils/app_route_enum.dart';
+import '../validator/confirmpassword.dart';
 import '../widget/custom_scaffold.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -90,38 +89,45 @@ class _RegisterPageState extends State<RegisterPage> {
                             : null,
                       ),
                       TextFormField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(labelText: "Mot de passe"),
-                        onChanged: (value) => context
-                            .read<UserValidationBloc>()
-                            .add(PasswordChanged(value)),
-                        validator: (_) => validationState.password.isNotValid
-                            ? "Mot de passe trop court"
-                            : null,
-                      ),
-                      TextFormField(
                         controller: confirmPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(labelText: "Confirmer le mot de passe"),
-                        validator: (value) => value != passwordController.text
-                            ? "Les mots de passe ne correspondent pas"
-                            : null,
+                        onChanged: (value) => context
+                            .read<UserValidationBloc>()
+                            .add(ConfirmPasswordChanged(value)),
+                        validator: (_) {
+                          final confirm = context.read<UserValidationBloc>().state.confirmPassword;
+                          if (confirm.isPure) return null;
+                          if (confirm.error == ConfirmPasswordValidationError.empty) {
+                            return "Confirmation requise";
+                          }
+                          if (confirm.error == ConfirmPasswordValidationError.mismatch) {
+                            return "Les mots de passe ne correspondent pas";
+                          }
+                          return null;
+                        },
                       ),
                       TextFormField(
                         controller: firstNameController,
                         decoration: const InputDecoration(labelText: "Prénom"),
-                        validator: (value) => value == null || value.isEmpty
-                            ? "Le prénom est requis"
+                        onChanged: (value) => context
+                            .read<UserValidationBloc>()
+                            .add(FirstnameChanged(value)),
+                        validator: (_) => validationState.firstName.isNotValid
+                            ? "Prénom invalide"
                             : null,
                       ),
                       TextFormField(
                         controller: lastNameController,
                         decoration: const InputDecoration(labelText: "Nom"),
-                        validator: (value) => value == null || value.isEmpty
-                            ? "Le nom est requis"
+                        onChanged: (value) => context
+                            .read<UserValidationBloc>()
+                            .add(LastnameChanged(value)),
+                        validator: (_) => validationState.lastName.isNotValid
+                            ? "Nom invalide"
                             : null,
                       ),
+
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: isLoading || !isFormValid
@@ -144,7 +150,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           context.go(AppRoute.login.path);
                         },
                         child: const Text(
-                          'Ce connecter',
+                          'Se connecter',
                           style: TextStyle(color: Colors.purple),
                         ),
                       ),
