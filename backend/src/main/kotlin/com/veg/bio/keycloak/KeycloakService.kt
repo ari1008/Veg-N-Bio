@@ -20,11 +20,10 @@ class KeycloakService(
     private val keycloakConfiguration: KeycloakConfiguration,
 ) {
 
-    fun createUserWithRoleCustomer(userDto: CreateUserDto): String {
+    fun createUserWithRole(userDto: CreateUserDto): String {
         if (!createUser(userDto)) throw ErrorKeycloak()
-        val clientId = getUserIdByUsername(userDto.username.value)
-        if (clientId == null) throw ErrorKeycloak()
-        if (!affectRoleCustomer(clientId)) throw ErrorKeycloak() else
+        val clientId = getUserIdByUsername(userDto.username.value) ?: throw ErrorKeycloak()
+        if (!affectRole(clientId, userDto.role)) throw ErrorKeycloak() else
             return clientId
     }
 
@@ -148,11 +147,11 @@ class KeycloakService(
     }
 
 
-    private fun affectRoleCustomer(userId: String): Boolean {
+    private fun affectRole(userId: String, role: Role): Boolean {
         val realm = keycloak.realm(keycloakConfiguration.realm)
 
         val role = realm.roles()
-            .get(Role.CUSTOMER.role)
+            .get(role.role)
             .toRepresentation()
 
         return try {

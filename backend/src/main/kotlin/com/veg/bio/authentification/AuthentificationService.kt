@@ -7,6 +7,7 @@ import com.veg.bio.authentification.`in`.LoginDto
 import com.veg.bio.authentification.out.LoginResponse
 import com.veg.bio.infrastructure.repository.UserRepository
 import com.veg.bio.keycloak.KeycloakService
+import com.veg.bio.keycloak.Role
 import org.springframework.stereotype.Service
 
 @Service
@@ -18,7 +19,7 @@ class AuthentificationService(
     fun createUserCustomer(userDto: CreateUserDto): String {
         checkUserNotExists(userDto.username, userDto.email)
 
-        val keycloakUserId = keycloakService.createUserWithRoleCustomer(userDto)
+        val keycloakUserId = keycloakService.createUserWithRole(userDto)
 
         val userEntity = MapperUserEntity.fromDto(userDto, keycloakUserId)
         userRepository.save(userEntity)
@@ -27,6 +28,7 @@ class AuthentificationService(
     }
 
     fun loginUser(loginDto: LoginDto): LoginResponse{
+        if (!goodRight(Username(loginDto.username), loginDto.role)) throw ErrorPlatformForThisUser()
          return keycloakService.loginUser(loginDto.username, loginDto.password)
     }
 
@@ -37,6 +39,13 @@ class AuthentificationService(
     fun logout(refreshToken: String){
         return keycloakService.logoutUser(refreshToken)
     }
+
+    private fun goodRight(username: Username, role: Role): Boolean{
+        val roleEntity = userRepository.findByUsername(username)?.role ?: throw ErrorLogin()
+        return roleEntity == role
+    }
+
+
 
     private fun checkUserNotExists(username: Username, email: Email) {
         if (userRepository.existsByUsernameOrEmail(username, email)) {

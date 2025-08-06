@@ -10,7 +10,8 @@ object MapperUserEntity {
             username = createUserDto.username,
             lastName = createUserDto.lastName,
             firstName = createUserDto.firstName,
-            clientId = clientId
+            clientId = clientId,
+            role = createUserDto.role
         )
     }
 }

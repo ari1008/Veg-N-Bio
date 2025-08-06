@@ -1,5 +1,6 @@
 package com.veg.bio.keycloak
 
 enum class Role(val role: String) {
-    CUSTOMER("customer")
+    CUSTOMER("customer"),
+    RESTAURANT_OWNER("restaurant_owner"),
 }
