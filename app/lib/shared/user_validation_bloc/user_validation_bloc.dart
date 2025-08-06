@@ -18,6 +18,8 @@ class UserValidationBloc
     on<UsernameChanged>(_onUsernameChanged);
     on<EmailChanged>(_onEmailChanged);
     on<PasswordChanged>(_onPasswordChanged);
+    on<FirstnameChanged>(_onFirstnameChanged);
+    on<LastnameChanged>(_onLastnameChanged);
   }
 
   void _onUsernameChanged(
@@ -49,6 +51,26 @@ class UserValidationBloc
       formStatus: password.isNotValid
           ? UserValidationStatus.invalid
           : UserValidationStatus.success,
+    ));
+  }
+
+  void _onFirstnameChanged(FirstnameChanged event, Emitter<UserValidationState> emit) {
+    final firstName = FirstName.dirty(event.firstname);
+    emit(state.copyWith(
+      firstName: firstName,
+      formStatus: firstName.isValid
+          ? UserValidationStatus.success
+          : UserValidationStatus.invalid,
+    ));
+  }
+
+  void _onLastnameChanged(LastnameChanged event, Emitter<UserValidationState> emit) {
+    final lastName = LastName.dirty(event.lastname);
+    emit(state.copyWith(
+      lastName: lastName,
+      formStatus: lastName.isValid
+          ? UserValidationStatus.success
+          : UserValidationStatus.invalid,
     ));
   }
 

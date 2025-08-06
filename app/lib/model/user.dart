@@ -33,11 +33,8 @@ class User {
       'firstName': firstname,
       'lastName': lastname,
       'role': role,
+      'password': password ?? "",
     };
-
-    if (password != null && password!.isNotEmpty) {
-      data['password'] = password;
-    }
 
     return data;
   }

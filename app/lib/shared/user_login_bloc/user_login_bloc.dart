@@ -2,7 +2,6 @@ import 'package:app/model/user.dart';
 import 'package:app/service/repository/auth_repository.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
-
 import '../../utils/session_manager.dart';
 
 part 'user_login_event.dart';
@@ -36,7 +35,6 @@ class UserLoginBloc extends Bloc<UserLoginEvent, UserLoginState> {
         refreshToken: connectionDto.refreshToken,
         expiresIn: connectionDto.expiresIn,
       );
-
       emit(state.copyWith(status: UserLoginStatus.loggingSuccess));
     } catch (error) {
       emit(state.copyWith(
@@ -96,7 +94,8 @@ class UserLoginBloc extends Bloc<UserLoginEvent, UserLoginState> {
           email: event.email,
           username: event.username,
           firstname: event.firstname,
-          lastname: event.lastname
+          lastname: event.lastname,
+          password: event.password,
           )
       );
 

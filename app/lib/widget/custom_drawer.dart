@@ -22,7 +22,7 @@ class CustomDrawer extends StatelessWidget {
             padding: EdgeInsets.zero,
             children: [
               const DrawerHeader(
-                decoration: BoxDecoration(color: Colors.purple),
+                decoration: BoxDecoration(color: Colors.green),
                 child: Text(
                   'Menu',
                   style: TextStyle(

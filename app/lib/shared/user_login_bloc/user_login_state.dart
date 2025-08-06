@@ -11,7 +11,12 @@ enum UserLoginStatus {
   tokenRefreshed,
   tokenRefreshError,
   updatingUserError,
-  updatingUserSuccess, refreshSuccess, refreshError, registrationSuccess, registrationError,
+  updatingUserSuccess,
+  refreshSuccess,
+  refreshError,
+  registrationSuccess,
+  registrationError,
+  notGoodPlatform,
 }
 
 final class UserLoginState {

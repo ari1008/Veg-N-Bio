@@ -32,3 +32,4 @@ class ConfirmPasswordChanged extends UserValidationEvent {
   ConfirmPasswordChanged(this.confirmPassword);
 }
 
+

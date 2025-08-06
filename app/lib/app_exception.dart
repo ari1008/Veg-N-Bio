@@ -24,3 +24,7 @@ class RoleNotFoundException extends AppException {
 class UpdateUserException extends AppException {
   UpdateUserException({super.message});
 }
+
+class NotGoodPlatformException extends AppException {
+  NotGoodPlatformException() : super(message: 'Not a good platform');
+}

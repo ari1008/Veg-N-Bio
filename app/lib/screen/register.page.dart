@@ -27,13 +27,13 @@ class _RegisterPageState extends State<RegisterPage> {
   void _submitForm(BuildContext context) {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<UserLoginBloc>().add(
-          UserRegisterEvent(
-            username: usernameController.text,
-            email: emailController.text,
-            password: passwordController.text,
-            firstname: firstNameController.text,
-            lastname: lastNameController.text,
-          )
+        UserRegisterEvent(
+          username: usernameController.text,
+          email: emailController.text,
+          password: passwordController.text,
+          firstname: firstNameController.text,
+          lastname: lastNameController.text,
+        ),
       );
     }
   }
@@ -89,6 +89,17 @@ class _RegisterPageState extends State<RegisterPage> {
                             : null,
                       ),
                       TextFormField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(labelText: "Mot de passe"),
+                        onChanged: (value) => context
+                            .read<UserValidationBloc>()
+                            .add(PasswordChanged(value)),
+                        validator: (_) => validationState.password.isNotValid
+                            ? "Mot de passe invalide"
+                            : null,
+                      ),
+                      TextFormField(
                         controller: confirmPasswordController,
                         obscureText: true,
                         decoration: const InputDecoration(labelText: "Confirmer le mot de passe"),
@@ -96,7 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             .read<UserValidationBloc>()
                             .add(ConfirmPasswordChanged(value)),
                         validator: (_) {
-                          final confirm = context.read<UserValidationBloc>().state.confirmPassword;
+                          final confirm = validationState.confirmPassword;
                           if (confirm.isPure) return null;
                           if (confirm.error == ConfirmPasswordValidationError.empty) {
                             return "Confirmation requise";
@@ -127,7 +138,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             ? "Nom invalide"
                             : null,
                       ),
-
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: isLoading || !isFormValid
@@ -151,7 +161,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         },
                         child: const Text(
                           'Se connecter',
-                          style: TextStyle(color: Colors.purple),
+                          style: TextStyle(color: Colors.green),
                         ),
                       ),
                     ],

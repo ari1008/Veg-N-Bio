@@ -40,7 +40,7 @@ class LoginPage extends StatelessWidget {
                     borderSide: BorderSide(color: Colors.black45),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.purple),
+                    borderSide: BorderSide(color: Colors.green),
                   ),
                 ),
                 keyboardType: TextInputType.emailAddress,
@@ -57,7 +57,7 @@ class LoginPage extends StatelessWidget {
                     borderSide: BorderSide(color: Colors.black45),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.purple),
+                    borderSide: BorderSide(color: Colors.green),
                   ),
                 ),
               ),
@@ -75,7 +75,7 @@ class LoginPage extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
+                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -93,7 +93,7 @@ class LoginPage extends StatelessWidget {
                 },
                 child: const Text(
                   'Créer un compte',
-                  style: TextStyle(color: Colors.purple),
+                  style: TextStyle(color: Colors.green),
                 ),
               ),
             ],

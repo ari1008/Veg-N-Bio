@@ -18,7 +18,7 @@ export const CreateUserDTO = z.object({
     firstName: z
         .string()
         .min(2)
-        .regex(/^[A-Z][a-zA-Z-'éèêëàâäïîôöùûüç ]*$/, {
+        .regex(/^[a-zA-Z-'éèêëàâäïîôöùûüç ]*$/, {
             message: 'Le prénom doit commencer par une majuscule.',
         }),
 
@@ -26,7 +26,7 @@ export const CreateUserDTO = z.object({
         .string()
         .min(1)
         .max(50)
-        .regex(/^[A-Z][a-zA-Z-'éèêëàâäïîôöùûüç ]*$/, {
+        .regex(/^[a-zA-Z-'éèêëàâäïîôöùûüç ]*$/, {
             message: 'Le nom doit commencer par une majuscule.',
         }),
 

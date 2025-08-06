@@ -1,5 +1,3 @@
-import 'dart:ffi';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../../model/connection_dto.dart';
@@ -10,35 +8,34 @@ import 'auth_data_source.dart';
 class ApiAuthDataSource implements AuthDataSource {
   @override
   Future<ConnectionDto> loginUser(String username, String password) async {
-    final dio = makeTheHeader();
-    final response = await dio.post(
-      "${dotenv.env['BASE_URL']}/auth/screen",
-      data: {
-        "username": username,
-        "password": password,
-        "role": "CUSTOMER"
-      },
-    );
-    final statusCode = response.statusCode;
+      final dio = makeTheHeader();
+      final response = await dio.post(
+        "${dotenv.env['BASE_URL']}/authentification/login",
+        data: {
+          "username": username,
+          "password": password,
+          "role": "CUSTOMER"
+        },
+      );
+      final statusCode = response.statusCode;
+      if (statusCode != 200) {
+        final apiMessage = response.data["message"] ?? "Unknown error occurred.";
+        throw Exception("Error $statusCode: $apiMessage");
+      }
+      return ConnectionDto.fromJson(response.data);
 
-    if (statusCode != 200) {
-      final apiMessage = response.data["message"] ?? "Unknown error occurred.";
-      throw Exception("Error $statusCode: $apiMessage");
-    }
-    return ConnectionDto.fromJson(response.data);
   }
 
   @override
   Future<bool> logoutUser(String refreshToken) async {
-    final dio = await makeTheHeader();
+    final dio = makeTheHeader();
     final response = await dio.post(
-      "${dotenv.env['BASE_URL']}/auth/logout",
+      "${dotenv.env['BASE_URL']}/authentification/logout",
       data: {
         "refreshToken": refreshToken,
       },
     );
     final statusCode = response.statusCode;
-
     if (statusCode != 204) {
       final apiMessage = response.data["message"] ?? "Unknown error occurred.";
       throw Exception("Error $statusCode: $apiMessage");
@@ -48,9 +45,9 @@ class ApiAuthDataSource implements AuthDataSource {
 
   @override
   Future<ConnectionDto> refreshToken(String refreshToken) async {
-    final dio = await makeTheHeaderWithAutoRefresh();
+    final dio = makeTheHeader();
     final response =
-        await dio.get("${dotenv.env['BASE_URL']}/auth/refresh", data: {
+        await dio.get("${dotenv.env['BASE_URL']}/authentification/refreshToken", data: {
       "refreshToken": refreshToken,
     });
 
@@ -64,19 +61,19 @@ class ApiAuthDataSource implements AuthDataSource {
 
   @override
   Future<bool> register(User user) async {
-    final dio = makeTheHeader();
-    final response = await dio.post(
-      "${dotenv.env['BASE_URL']}/user/create",
-      data: user.toJson(),
-    );
-    final statusCode = response.statusCode;
+      final dio = makeTheHeader();
+      final response = await dio.post(
+        "${dotenv.env['BASE_URL']}/authentification",
+        data: user.toJson(),
+      );
+      final statusCode = response.statusCode;
+      if (statusCode != 201) {
+        final apiMessage = response.data["message"] ?? "Unknown error occurred.";
+        throw Exception("Error $statusCode: $apiMessage");
+      }
 
-    if (statusCode != 202) {
-      final apiMessage = response.data["message"] ?? "Unknown error occurred.";
-      throw Exception("Error $statusCode: $apiMessage");
-    }
+      return true;
 
-    return true;
   }
 
 }
