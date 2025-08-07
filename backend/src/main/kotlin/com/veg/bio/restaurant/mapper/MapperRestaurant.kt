@@ -61,6 +61,23 @@ object MapperRestaurant {
 
     }
 
+    fun mapMeeting(meetingRoom: MeetingRoom): MeetingRomEntity {
+        return MeetingRomEntity(
+            name = meetingRoom.name,
+            numberMettingPlace = meetingRoom.numberMettingPlace,
+            isReservable = meetingRoom.isReservable
+        )
+    }
+
+    fun mapMeetingRoom(meetingRomEntity: MeetingRomEntity): MeetingRoom {
+        return MeetingRoom(
+            meetingRomEntity.id,
+            meetingRomEntity.name,
+            meetingRomEntity.numberMettingPlace,
+            meetingRomEntity.isReservable
+        )
+    }
+
     fun mapAvailability(openingHourEntities: List<OpeningHourEntity>): Availability {
         val openingHours = openingHourEntities.associate { entity ->
             entity.dayOfWeek to TimeRange(
