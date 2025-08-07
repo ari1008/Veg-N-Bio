@@ -10,8 +10,9 @@ import java.util.*
 object MapperRestaurant {
 
 
-    fun toDomain(restaurantEntity: RestaurantEntity): Restaurant {
+    fun toDomain(restaurantEntity: RestaurantEntity, id: UUID? = null): Restaurant {
         return Restaurant(
+            id = id,
             name = restaurantEntity.nameRestaurant,
             address = Address(
                 streetNumber = restaurantEntity.addressEmbeddable.streetNumber,
