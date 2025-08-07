@@ -8,7 +8,24 @@
       "redirectUris": ["*"],
       "webOrigins": ["*"],
       "protocol": "openid-connect",
-      "standardFlowEnabled": true
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ],
   "roles": {
@@ -37,7 +54,7 @@
         }
       ],
       "realmRoles": [
-        "customer"
+        "restaurant_owner"
       ]
     }
   ]

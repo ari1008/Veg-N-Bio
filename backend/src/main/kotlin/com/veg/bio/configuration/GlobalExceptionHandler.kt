@@ -5,6 +5,7 @@ import com.veg.bio.authentification.ErrorPlatformForThisUser
 import com.veg.bio.authentification.UserExist
 import com.veg.bio.keycloak.ErrorKeycloak
 import com.veg.bio.keycloak.ErrorRefreshToken
+import com.veg.bio.user.NotFoundUserWithClientId
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -69,6 +70,14 @@ class GlobalExceptionHandler {
     fun handleErrorPlatformForThisUser(): Map<String, String> {
         return mapOf(
             "error" to "User is not good for this plateforme"
+        )
+    }
+
+    @ExceptionHandler(NotFoundUserWithClientId::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleNotFoundUserWithClientId(): Map<String, String> {
+        return mapOf(
+            "error" to "User not found with clientId"
         )
     }
 }

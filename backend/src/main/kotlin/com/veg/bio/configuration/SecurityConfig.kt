@@ -20,6 +20,7 @@ class SecurityConfig {
             .authorizeHttpRequests {
                 it
                     .requestMatchers("/api/authentification/**").permitAll()
+                    .requestMatchers("/api/notprotected/restaurant/**").permitAll()
                     .anyRequest().authenticated()
             }
             .oauth2ResourceServer {
@@ -36,8 +37,10 @@ class SecurityConfig {
     fun jwtAuthenticationConverter(): JwtAuthenticationConverter {
         val converter = JwtAuthenticationConverter()
         converter.setJwtGrantedAuthoritiesConverter { jwt: Jwt ->
-            val roles = (jwt.claims["realm_access"] as? Map<*, *>)?.get("roles") as? Collection<*>
-            roles?.map { role -> SimpleGrantedAuthority("ROLE_$role") } ?: emptyList()
+            val roles: List<String>? = (jwt.claims["realm_access"] as? Map<*, *>)?.get("roles") as? List<String>
+            roles?.map { role: String ->
+                SimpleGrantedAuthority("ROLE_${role.uppercase()}")
+            } ?: emptyList()
         }
         return converter
     }
