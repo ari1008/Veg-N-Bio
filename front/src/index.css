@@ -2,18 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+    html {
+        font-family: 'Inter', sans-serif;
+    }
+}
+
 @plugin "daisyui";
 @plugin "daisyui/theme" {
     name: "vegnbio";
     default: true;
 
-    --color-base-100: #ffffff;
-    --color-primary: #22c55e;
+    --color-primary: #22c55e;           /* vert végétal */
     --color-primary-content: #ffffff;
-    --color-secondary: #166534;
-    --color-accent: #4ade80;
-    --color-neutral: #f3f4f6;
+
+    --color-secondary: #166534;         /* vert foncé feuille */
+    --color-secondary-content: #ffffff;
+
+    --color-accent: #4ade80;            /* vert clair accent */
+
+    --color-neutral: #f3f4f6;           /* gris très clair */
+    --color-neutral-content: #1f2937;
+
+    --color-base-100: #ffffff;          /* fond clair principal */
+    --color-base-200: #f9fafb;          /* fond secondaire */
+    --color-base-content: #1f2937;      /* texte principal */
+
+    --color-info: #3b82f6;
     --color-success: #16a34a;
     --color-warning: #facc15;
     --color-error: #ef4444;
+
+    /* Boutons & champs */
+    --rounded-btn: 0.5rem;
+    --animation-btn: 0.25s;
+    --btn-focus-scale: 0.97;
+    --btn-text-case: none;
+
+    /* Champs de formulaire */
+    --rounded-box: 0.75rem;
 }

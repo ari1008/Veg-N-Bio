@@ -6,7 +6,6 @@ import com.veg.bio.authentification.domain.LastName
 import com.veg.bio.authentification.domain.Username
 import com.veg.bio.keycloak.Role
 import jakarta.persistence.Column
-import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -31,6 +30,7 @@ data class UserEntity(
 
     val lastName: LastName,
 
+    @Column(unique = true)
     val clientId: String,
 
     val role: Role,

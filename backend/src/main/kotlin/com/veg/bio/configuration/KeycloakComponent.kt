@@ -15,10 +15,10 @@ class KeycloakComponent(
     @Bean
     fun createClientKeycloak(): Keycloak = KeycloakBuilder.builder()
         .serverUrl(keycloakConfiguration.serverUrl)
-        .realm(keycloakConfiguration.realmAdmin) // le realm admin de Keycloak
+        .realm(keycloakConfiguration.realmAdmin)
         .username(keycloakConfiguration.username)
         .password(keycloakConfiguration.password)
-        .clientId(keycloakConfiguration.clientId)
+        .clientId(keycloakConfiguration.clientIdAdmin)
         .grantType(OAuth2Constants.PASSWORD)
         .build()
 

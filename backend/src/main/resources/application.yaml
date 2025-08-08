@@ -6,7 +6,11 @@ spring:
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_URI}
   jpa:
     hibernate:
       ddl-auto: update
@@ -24,6 +28,7 @@ server:
 frontend:
   url: ${FRONT_URL}
 
+
 keycloak:
   server-url: ${KEYCLOAK_URL}
   realm: ${KEYCLOAK_REALM}
@@ -31,3 +36,4 @@ keycloak:
   username: ${KEYCLOAK_USERNAME}
   password: ${${KEYCLOAK_PASSWORD}
   client-id: ${KEYCLOAK_CLIENT_ID}
+  client-id-admin: ${KEYCLOAK_CLIENT_ID_ADMIN}

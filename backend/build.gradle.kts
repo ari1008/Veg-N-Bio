@@ -29,6 +29,11 @@ dependencies {
 	implementation("org.keycloak:keycloak-admin-client:26.0.6")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
 	implementation("org.postgresql:postgresql:42.7.3")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
+
 }
 
 kotlin {

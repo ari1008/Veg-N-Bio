@@ -10,4 +10,5 @@ data class KeycloakConfiguration(
     val username: String?,
     val password: String?,
     val clientId: String?,
+    val clientIdAdmin: String?,
 )
