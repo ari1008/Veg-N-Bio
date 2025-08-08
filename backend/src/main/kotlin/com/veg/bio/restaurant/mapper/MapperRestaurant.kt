@@ -27,6 +27,7 @@ object MapperRestaurant {
             }.toList(),
             numberPlace = restaurantEntity.numberOfPlace,
             restaurantFeatures = restaurantEntity.features,
+            numberPrinter = restaurantEntity.numberPrinter
         )
     }
 
@@ -50,6 +51,7 @@ object MapperRestaurant {
                     isReservable = it.isReservable
                 )
             }.toList(),
+            numberPrinter = restaurant.numberPrinter
         )
     }
 

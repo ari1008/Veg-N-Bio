@@ -27,7 +27,7 @@ class RestaurantService(
     }
 
     fun findAllRestaurant(): List<Restaurant> {
-        return restaurantRepository.findAll().stream().map { MapperRestaurant.toDomain(it) }.toList()
+        return restaurantRepository.findAll().stream().map { MapperRestaurant.toDomain(it, it.id) }.toList()
     }
 
     fun findAvailabilityById(id: UUID): Availability {

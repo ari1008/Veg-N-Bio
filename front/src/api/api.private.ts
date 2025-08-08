@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "./auth/store/store.ts";
+import api from "./api.ts";
 
 const apiPrivate = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -24,20 +25,23 @@ apiPrivate.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-
+        console.log("test")
         if (originalRequest.url?.includes("/authentification/refreshToken")) {
             return Promise.reject(error);
         }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
+            console.log("retry go")
             originalRequest._retry = true;
 
             try {
                 const refreshToken = useAuthStore.getState().authData?.refreshToken;
+                console.log(refreshToken)
                 if (!refreshToken) return Promise.reject(error);
 
-                const response = await apiPrivate.post("/authentification/refreshToken", { refreshToken });
+                const response = await api.post("/authentification/refreshToken", { refreshToken });
                 const newToken = response.data.accessToken;
+                console.log(newToken)
 
                 useAuthStore.getState().setAuthData(response.data);
 

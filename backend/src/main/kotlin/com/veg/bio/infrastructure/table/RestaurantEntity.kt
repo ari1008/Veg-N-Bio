@@ -2,6 +2,7 @@ package com.veg.bio.infrastructure.table
 
 import com.veg.bio.restaurant.domain.NameRestaurant
 import com.veg.bio.restaurant.domain.NumberPlace
+import com.veg.bio.restaurant.domain.Printer
 import com.veg.bio.restaurant.domain.RestaurantFeature
 import jakarta.persistence.*
 import java.util.*
@@ -35,5 +36,9 @@ data class RestaurantEntity(
     @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)
     @JoinColumn(name = "restaurant_id")
     val meetingRoms: List<MeetingRomEntity>,
+
+    @Column(name = "number_of_printer")
+    val numberPrinter: Printer,
+
 
     )

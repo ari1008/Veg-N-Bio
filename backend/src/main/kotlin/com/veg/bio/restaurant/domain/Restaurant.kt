@@ -10,5 +10,6 @@ data class Restaurant (
     val availability: Availability,
     val meetingRooms: List<MeetingRoom>,
     val numberPlace: NumberPlace,
+    val numberPrinter: Printer,
     val restaurantFeatures: Set<RestaurantFeature>
 )
