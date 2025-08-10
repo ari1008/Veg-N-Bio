@@ -1,0 +1,53 @@
+name: Build & Push to Scaleway Registry
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+
+    env:
+      REGISTRY: ${{ secrets.SCW_REGISTRY }}
+      NAMESPACE: ${{ secrets.SCW_NAMESPACE }}              
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Scaleway Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.SCW_REGISTRY }}
+          username: ${{ secrets.SCW_REGISTRY_USERNAME }}
+          password: ${{ secrets.SCW_REGISTRY_PASSWORD }}
+
+      - name: Set image tags
+        id: vars
+        run: |
+          BRANCH="${GITHUB_REF_NAME//\//-}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "SHA=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      # Backend
+      - name: Build & Push backend
+        run: |
+          IMAGE=$REGISTRY/$NAMESPACE/vegnbio-api
+          docker build -t $IMAGE:${{ steps.vars.outputs.SHA }} ./backend
+          docker tag  $IMAGE:${{ steps.vars.outputs.SHA }} $IMAGE:branch-${{ steps.vars.outputs.BRANCH }}
+          docker push $IMAGE:${{ steps.vars.outputs.SHA }}
+          docker push $IMAGE:branch-${{ steps.vars.outputs.BRANCH }}
+
+      # Frontend
+      - name: Build & Push frontend
+        run: |
+          IMAGE=$REGISTRY/$NAMESPACE/vegnbio-front
+          docker build \
+            --build-arg VITE_API_BASE_URL=https://api.example.com/api \
+            --build-arg VITE_FRONTEND_URL=https://app.example.com \
+            -t $IMAGE:${{ steps.vars.outputs.SHA }} ./front
+          docker tag  $IMAGE:${{ steps.vars.outputs.SHA }} $IMAGE:branch-${{ steps.vars.outputs.BRANCH }}
+          docker push $IMAGE:${{ steps.vars.outputs.SHA }}
+          docker push $IMAGE:branch-${{ steps.vars.outputs.BRANCH }}

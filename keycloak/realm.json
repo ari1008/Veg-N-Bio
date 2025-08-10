@@ -1,0 +1,61 @@
+{
+  "realm": "vegnbio",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "vegnbio-app",
+      "publicClient": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "foo",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "customer"
+      },
+      {
+        "name": "restaurant_owner"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "ari",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "ari",
+      "lastName": "ff",
+      "email": "ff@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "ari1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "restaurant_owner"
+      ]
+    }
+  ]
+}
