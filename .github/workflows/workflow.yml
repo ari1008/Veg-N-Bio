@@ -2,91 +2,54 @@ name: Build & Push (Scaleway)
 
 on:
   push:
-    branches: [ "main", "develop" ]
-    tags: [ "v*" ]
-  workflow_dispatch:
+    branches: [ main ]
 
 permissions:
   contents: read
-
-env:
-  REGISTRY: ${{ secrets.SCW_REGISTRY }}
-  NAMESPACE: ${{ secrets.SCW_NAMESPACE }}
-  # Vars pour le front (définies côté "Repository Variables")
-  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-  VITE_FRONTEND_URL: ${{ vars.VITE_FRONTEND_URL }}
+  packages: write
 
 jobs:
-  build-push:
+  docker:
     runs-on: ubuntu-latest
 
+    # 🔴 IMPORTANT : cible l'Environment GitHub "project"
+    environment: project
+
+    env:
+      # vars d'environnement (onglet Variables de l'Environment)
+      REGISTRY: ${{ vars.SCW_REGISTRY }}          # ex: rg.fr-par.scw.cloud
+      NAMESPACE: ${{ vars.SCW_NAMESPACE }}        # ex: project-annuel
+      VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+      VITE_FRONTEND_URL: ${{ vars.VITE_FRONTEND_URL }}
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set vars
-        id: vars
-        shell: bash
-        run: |
-          BRANCH="${GITHUB_REF_NAME//\//-}"
-          TAG_SHORT="${GITHUB_SHA::7}"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-          echo "tag_short=$TAG_SHORT" >> $GITHUB_OUTPUT
-          if [[ "$GITHUB_REF_NAME" == "main" ]]; then echo "latest=true" >> $GITHUB_OUTPUT; else echo "latest=false" >> $GITHUB_OUTPUT; fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
 
       - name: Login to Scaleway Registry
-        run: echo "${{ secrets.SCW_SECRET_KEY }}" | docker login "$REGISTRY" -u nologin --password-stdin
+        run: |
+          echo "${{ secrets.SCW_REGISTRY_PASSWORD }}" \
+            | docker login "${REGISTRY}/${NAMESPACE}" -u nologin --password-stdin
 
-      # ===== Backend (Spring Boot) =====
       - name: Build & Push backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          platforms: linux/amd64
           tags: |
-            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-api:sha-${{ steps.vars.outputs.tag_short }}
-            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-api:branch-${{ steps.vars.outputs.branch }}
-          labels: |
-            org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-api:latest
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-api:${{ github.sha }}
 
-      - name: Tag latest (backend)
-        if: steps.vars.outputs.latest == 'true'
-        run: |
-          IMAGE=${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-api
-          docker buildx imagetools create -t $IMAGE:latest \
-            $IMAGE:sha-${{ steps.vars.outputs.tag_short }}
-
-      # ===== Frontend (Vite + Nginx) =====
-      - name: Build & Push frontend
+      - name: Build & Push front
         uses: docker/build-push-action@v6
         with:
           context: ./front
           file: ./front/Dockerfile
           push: true
-          platforms: linux/amd64
           build-args: |
             VITE_API_BASE_URL=${{ env.VITE_API_BASE_URL }}
             VITE_FRONTEND_URL=${{ env.VITE_FRONTEND_URL }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-front:sha-${{ steps.vars.outputs.tag_short }}
-            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-front:branch-${{ steps.vars.outputs.branch }}
-          labels: |
-            org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Tag latest (frontend)
-        if: steps.vars.outputs.latest == 'true'
-        run: |
-          IMAGE=${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegnbio-front
-          docker buildx imagetools create -t $IMAGE:latest \
-            $IMAGE:sha-${{ steps.vars.outputs.tag_short }}
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-front:latest
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-front:${{ github.sha }}
