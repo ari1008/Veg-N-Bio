@@ -11,6 +11,10 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${KEYCLOAK_URI}
+  logging:
+    level:
+      org.springframework.security: DEBUG
+      org.springframework.boot.autoconfigure.security: DEBUG
   jpa:
     hibernate:
       ddl-auto: update
@@ -34,6 +38,6 @@ keycloak:
   realm: ${KEYCLOAK_REALM}
   realm-admin: ${KEYCLOAK_REALM_ADMIN}
   username: ${KEYCLOAK_USERNAME}
-  password: ${${KEYCLOAK_PASSWORD}
+  password: ${KEYCLOAK_PASSWORD}
   client-id: ${KEYCLOAK_CLIENT_ID}
   client-id-admin: ${KEYCLOAK_CLIENT_ID_ADMIN}
