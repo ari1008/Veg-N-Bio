@@ -11,14 +11,11 @@ permissions:
 jobs:
   docker:
     runs-on: ubuntu-latest
-
-    # 🔴 IMPORTANT : cible l'Environment GitHub "project"
     environment: project
 
     env:
-      # vars d'environnement (onglet Variables de l'Environment)
-      REGISTRY: ${{ vars.SCW_REGISTRY }}          # ex: rg.fr-par.scw.cloud
-      NAMESPACE: ${{ vars.SCW_NAMESPACE }}        # ex: project-annuel
+      REGISTRY: ${{ vars.SCW_REGISTRY }}
+      NAMESPACE: ${{ vars.SCW_NAMESPACE }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
       VITE_FRONTEND_URL: ${{ vars.VITE_FRONTEND_URL }}
 
