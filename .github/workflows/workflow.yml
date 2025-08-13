@@ -1,27 +1,33 @@
-name: Build & Push (Scaleway)
+name: "Build & Deploy (Scaleway)"
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  docker:
+  build_and_push:
     runs-on: ubuntu-latest
     environment: project
-
     env:
       REGISTRY: ${{ vars.SCW_REGISTRY }}
       NAMESPACE: ${{ vars.SCW_NAMESPACE }}
       VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
       VITE_FRONTEND_URL: ${{ vars.VITE_FRONTEND_URL }}
-
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Login to Scaleway Registry
         run: |
@@ -50,3 +56,35 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-front:latest
             ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/vegn-bio-front:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build_and_push
+    if: ${{ needs.build_and_push.result == 'success' }}
+    steps:
+      - name: Add SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known_hosts
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          PORT=${{ secrets.VPS_SSH_PORT }}
+          : "${PORT:=22}"
+          ssh-keyscan -p "$PORT" "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Pull and restart containers
+        shell: bash
+        run: |
+          PORT=${{ secrets.VPS_SSH_PORT }}
+          : "${PORT:=22}"
+          ssh -p "$PORT" "${{ secrets.VPS_USER }}"@"${{ secrets.VPS_HOST }}" << 'EOF'
+          set -euo pipefail
+          cd /root/project_annuel
+          docker compose pull
+          docker compose down
+          docker compose up -d
+          EOF
