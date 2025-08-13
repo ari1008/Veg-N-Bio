@@ -59,6 +59,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
+    environment: project
     needs: build_and_push
     if: ${{ needs.build_and_push.result == 'success' }}
     steps:
