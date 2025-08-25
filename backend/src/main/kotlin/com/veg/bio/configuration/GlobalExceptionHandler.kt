@@ -5,6 +5,7 @@ import com.veg.bio.authentification.ErrorPlatformForThisUser
 import com.veg.bio.authentification.UserExist
 import com.veg.bio.keycloak.ErrorKeycloak
 import com.veg.bio.keycloak.ErrorRefreshToken
+import com.veg.bio.menu.NotGoodPrice
 import com.veg.bio.user.NotFoundUserWithClientId
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -78,6 +79,15 @@ class GlobalExceptionHandler {
     fun handleNotFoundUserWithClientId(): Map<String, String> {
         return mapOf(
             "error" to "User not found with clientId"
+        )
+    }
+
+    @ExceptionHandler(NotGoodPrice::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleNotGoodPrice(): Map<String, String> {
+        print("hello")
+        return mapOf(
+            "error" to "Not good price the price is between 3 and 10000"
         )
     }
 }
