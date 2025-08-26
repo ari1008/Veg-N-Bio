@@ -40,6 +40,7 @@ class CustomDrawer extends StatelessWidget {
               if (!isConnected)
                 _buildItem(context, Icons.app_registration, 'Register',
                     AppRoute.register.path),
+              _buildItem(context, Icons.ac_unit, "Menu", AppRoute.menu.path),
             ],
           );
         },

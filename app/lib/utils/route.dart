@@ -1,3 +1,4 @@
+import 'package:app/screen/menu.page.dart';
 import 'package:app/utils/app_route_enum.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +16,10 @@ final GoRouter router = GoRouter(
     GoRoute(
       path: AppRoute.register.path,
       builder: (context, state) => const RegisterPage(),
+    ),
+    GoRoute(
+      path: AppRoute.menu.path,
+      builder: (context, state) => const MenuPage(),
     ),
   ],
 );

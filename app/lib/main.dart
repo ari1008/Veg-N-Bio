@@ -1,5 +1,8 @@
 import 'package:app/service/auth_data_source/api_auth_data_source.dart';
+import 'package:app/service/menu_data_source/api_menu_data_source.dart';
 import 'package:app/service/repository/auth_repository.dart';
+import 'package:app/service/repository/menu_repository.dart';
+import 'package:app/shared/menu_bloc/menu_bloc.dart';
 import 'package:app/shared/user_login_bloc/user_login_bloc.dart';
 import 'package:app/shared/user_validation_bloc/user_validation_bloc.dart';
 import 'package:app/utils/route.dart';
@@ -22,15 +25,22 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
+        BlocProvider<UserLoginBloc>(
           create: (_) => UserLoginBloc(
             authRepository: AuthRepository(
               remoteDataSource: ApiAuthDataSource(),
             ),
           ),
         ),
-        BlocProvider(
+        BlocProvider<UserValidationBloc>(
           create: (_) => UserValidationBloc(),
+        ),
+        BlocProvider<MenuBloc>(
+          create: (_) => MenuBloc(
+            menuRepository: MenuRepository(
+              remoteDataSource: ApiMenuDataSource(),
+            ),
+          ),
         ),
       ],
       child: MaterialApp.router(
