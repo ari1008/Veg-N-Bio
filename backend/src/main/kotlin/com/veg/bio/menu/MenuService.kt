@@ -20,7 +20,9 @@ import com.veg.bio.menu.mapper.OrderLineMapper
 import com.veg.bio.menu.mapper.toSummaryDto
 import com.veg.bio.menu.response.OrderListResponse
 import com.veg.bio.menu.response.OrderResponse
+import com.veg.bio.restaurant.RestaurantNotDelivered
 import com.veg.bio.restaurant.RestaurantNotFound
+import com.veg.bio.restaurant.domain.RestaurantFeature
 import com.veg.bio.user.NotFoundUserWithClientId
 import com.veg.bio.user.NotGoodTypeOfUser
 import org.springframework.data.domain.PageRequest
@@ -86,6 +88,7 @@ class MenuService(
     fun makeOrder(order: Order) {
         val user = userRepository.findById(order.idUser).orElseThrow { NotFoundUserWithClientId() }
         val restaurantEntity = restaurantRepository.findById(order.idRestaurant).orElseThrow { RestaurantNotFound() }
+        if(order.flatDelivered && !restaurantEntity.features.contains(RestaurantFeature.PLATEAUX_LIVRABLE)) throw RestaurantNotDelivered()
         val dishTotal = findDishes(order.listDishNumber)
 
         if (user.role == Role.RESTAURANT_OWNER) throw NotGoodTypeOfUser()
@@ -94,7 +97,7 @@ class MenuService(
         if (notAvailable.isNotEmpty()) throw ErrorDishNotAvailable()
 
         val totalAmount = dishTotal.sumOf { it.dish.price * it.total }
-        val orderEntity = OrderLineMapper.createOrderEntity(user, totalAmount, restaurantEntity)
+        val orderEntity = OrderLineMapper.createOrderEntity(user, totalAmount, restaurantEntity, order.flatDelivered)
         dishTotal.forEach { OrderLineMapper.createOrderLineEntity(orderEntity, it) }
 
         orderRepository.save(orderEntity)

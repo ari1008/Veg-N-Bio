@@ -44,7 +44,10 @@ data class OrderEntity(
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "restaurant_id", nullable = false)
-    val restaurant: RestaurantEntity
+    val restaurant: RestaurantEntity,
+
+    @Column(name = "flat_delivered", nullable = false)
+    val flatDelivered: Boolean = false,
 
 
     ) {

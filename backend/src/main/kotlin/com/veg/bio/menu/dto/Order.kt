@@ -5,5 +5,6 @@ import java.util.UUID
 data class Order(
     val idRestaurant: UUID,
     val idUser: UUID,
-    val listDishNumber: List<DishNumber>
+    val listDishNumber: List<DishNumber>,
+    val flatDelivered: Boolean = false,
 )

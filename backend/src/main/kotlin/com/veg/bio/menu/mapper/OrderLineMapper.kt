@@ -25,8 +25,8 @@ object OrderLineMapper {
     }
 
 
-    fun createOrderEntity(user: UserEntity, amount: Double, restaurantEntity: RestaurantEntity): OrderEntity{
-        return OrderEntity(customer=user, totalAmount = amount, restaurant = restaurantEntity)
+    fun createOrderEntity(user: UserEntity, amount: Double, restaurantEntity: RestaurantEntity, flatDelivered: Boolean): OrderEntity{
+        return OrderEntity(customer=user, totalAmount = amount, restaurant = restaurantEntity, flatDelivered = flatDelivered)
     }
 
     fun toResponse(entity: OrderEntity): OrderResponse {
@@ -34,7 +34,7 @@ object OrderLineMapper {
             id = entity.id,
             status = entity.status,
             customerId = entity.customer.id!!,
-            customerName = "${entity.customer.firstName} ${entity.customer.lastName}" , // Assurez-vous que customer est chargé
+            customerName = "${entity.customer.firstName} ${entity.customer.lastName}" ,
             totalAmount = entity.totalAmount,
             createdAt = entity.createdAt,
             lines = entity.lines.map { line ->
@@ -46,7 +46,8 @@ object OrderLineMapper {
                     lineTotal = line.lineTotal(),
                     allergens = line.allergensSnapshot
                 )
-            }
+            },
+            flatDelivered = entity.flatDelivered
         )
     }
 }

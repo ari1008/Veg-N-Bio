@@ -12,4 +12,5 @@ data class OrderResponse(
     val totalAmount: Double,
     val lines: List<OrderLineResponse>,
     val createdAt: LocalDateTime,
+    val flatDelivered: Boolean,
 )
