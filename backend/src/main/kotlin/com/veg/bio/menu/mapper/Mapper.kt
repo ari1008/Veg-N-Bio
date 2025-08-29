@@ -9,6 +9,7 @@ import com.veg.bio.menu.response.CustomerDto
 import com.veg.bio.menu.response.OrderDetailDto
 import com.veg.bio.menu.response.OrderLineDto
 import com.veg.bio.menu.response.OrderSummaryDto
+import kotlin.Boolean
 
 fun UserEntity.toDto(): CustomerDto {
     return CustomerDto(
@@ -30,6 +31,7 @@ fun OrderEntity.toSummaryDto(): OrderSummaryDto {
         itemCount = this.lines.size,
         createdAt = this.createdAt,
         restaurant = this.restaurant.toRestaurantDto(),
+        flatDelivered = this.flatDelivered
     )
 }
 

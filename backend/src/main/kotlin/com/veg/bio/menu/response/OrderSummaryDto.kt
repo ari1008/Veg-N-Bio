@@ -14,4 +14,5 @@ data class OrderSummaryDto(
     val itemCount: Int,
     val createdAt: LocalDateTime,
     val restaurant: RestaurantDto,
+    val flatDelivered: Boolean,
 )
