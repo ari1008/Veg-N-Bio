@@ -75,3 +75,24 @@ export type CreateDishRequest = {
         | "NUTS" | "CELERY" | "MUSTARD" | "SESAME_SEEDS" | "SULPHITES" | "LUPIN" | "MOLLUSCS"
         )[];
 };
+
+export interface DishNumber {
+    idDish: string;
+    number: number;
+}
+
+export interface CreateOrderRequest {
+    idRestaurant: string;
+    idUser: string;
+    listDishNumber: DishNumber[];
+}
+
+export interface CreateOrderRequestSimple {
+    customerName: string;
+    customerId?: string;
+    lines: {
+        idDish: string;
+        quantity: number;
+    }[];
+}
+

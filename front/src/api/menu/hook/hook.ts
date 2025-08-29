@@ -1,7 +1,15 @@
-import type {CreateDishRequest, OrderDetail, OrderFilters, OrderListResponse} from "../dto/dto.ts";
+import type {CreateDishRequest, CreateOrderRequest, OrderDetail, OrderFilters, OrderListResponse} from "../dto/dto.ts";
 import type {UseMutationResult, UseQueryResult} from "@tanstack/react-query";
-import {useMutation, useQuery} from "@tanstack/react-query";
-import {createDish, getAllDishes, getAllOrders, getOneDish, getOneOrder, updateOrderStatus} from "../menu.ts";
+import {useMutation, useQuery, useQueryClient} from "@tanstack/react-query";
+import {
+    createDish,
+    createOrder,
+    getAllDishes,
+    getAllOrders,
+    getOneDish,
+    getOneOrder,
+    updateOrderStatus
+} from "../menu.ts";
 
 export const useGetAllOrders = (filters: OrderFilters = {}): UseQueryResult<OrderListResponse, Error> =>
     useQuery({
@@ -41,3 +49,17 @@ export const useCreateDish = () =>
     useMutation({
         mutationFn: (dish: CreateDishRequest) => createDish(dish),
     });
+
+export const useCreateOrder = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (order: CreateOrderRequest) => createOrder(order),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["orders"] });
+        },
+        onError: (error) => {
+            console.error('Erreur lors de la création de la commande:', error);
+        }
+    });
+};

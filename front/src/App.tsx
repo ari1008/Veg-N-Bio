@@ -11,6 +11,7 @@ import { ViewRestaurantPage } from "./page/view.restaurant.page";
 import { DashboardPage } from "./page/dashboard.page.tsx";
 import MenuPage from "./page/menu.page.tsx";
 import CreateDishPage from "./page/create.dish.page.tsx";
+import KioskOrderPage from "./page/kiosk.order.page.tsx";
 
 function App() {
     const [isAuthenticated] = useState<boolean>(() => {
@@ -53,7 +54,16 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
-            </Routes>
+                <Route
+                    path="/create-order"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <KioskOrderPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+        </Routes>
             <Toaster position="top-right" />
         </>
     );

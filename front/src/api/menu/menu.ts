@@ -1,4 +1,11 @@
-import type {CreateDishRequest, Dish, OrderDetail, OrderFilters, OrderListResponse} from "./dto/dto.ts";
+import type {
+    CreateDishRequest,
+    CreateOrderRequest,
+    Dish,
+    OrderDetail,
+    OrderFilters,
+    OrderListResponse
+} from "./dto/dto.ts";
 import apiPrivate from "../api.private.ts";
 import api from "../api.ts";
 
@@ -6,11 +13,9 @@ const orderPath = "/menu/order";
 const menuPath = "/notprotected/menu";
 
 
-// API Functions Orders (existantes)
 export const getAllOrders = async (filters: OrderFilters = {}): Promise<OrderListResponse> => {
     const params = new URLSearchParams();
 
-    // Ajouter les paramètres de filtrage
     if (filters.status) params.append('status', filters.status);
     if (filters.customerId) params.append('customerId', filters.customerId);
     if (filters.startDate) params.append('startDate', filters.startDate);
@@ -34,7 +39,7 @@ export const updateOrderStatus = async ({ orderId, status }: { orderId: string; 
     return response.data;
 };
 
-// API Functions Menu (nouvelles)
+
 export const getAllDishes = async (): Promise<Dish[]> => {
     const response = await api.get(menuPath);
     return response.data;
@@ -53,6 +58,20 @@ export const createDish = async (payload: CreateDishRequest) => {
     } catch (err: any) {
         console.error(
             "[createDish] status =", err?.response?.status,
+            "data =", err?.response?.data
+        );
+        throw err;
+    }
+};
+
+export const createOrder = async (payload: CreateOrderRequest): Promise<void> => {
+    console.log("[createOrder] payload envoyé =", payload.listDishNumber);
+    try {
+        const response = await apiPrivate.post(orderPath, payload);
+        return response.data;
+    } catch (err: any) {
+        console.error(
+            "[createOrder] status =", err?.response?.status,
             "data =", err?.response?.data
         );
         throw err;
