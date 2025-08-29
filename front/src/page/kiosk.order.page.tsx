@@ -26,6 +26,7 @@ const KioskOrderPage = () => {
     const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
     const [guestName, setGuestName] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
+    const [isDelivery, setIsDelivery] = useState(false); // État pour la livraison
 
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
     const { data: dishes = [], isLoading: loadingDishes } = useGetAllDishes();
@@ -36,6 +37,16 @@ const KioskOrderPage = () => {
     useEffect(() => {
         loadRestaurants();
     }, [loadRestaurants]);
+
+    // Réinitialiser l'option de livraison quand on change de restaurant
+    useEffect(() => {
+        if (selectedRestaurant) {
+            const hasDeliveryFeature = selectedRestaurant.restaurantFeatures.includes('PLATEAUX_LIVRABLE');
+            if (!hasDeliveryFeature) {
+                setIsDelivery(false);
+            }
+        }
+    }, [selectedRestaurant]);
 
     const availableDishes = dishes.filter(dish => dish.available);
 
@@ -69,29 +80,8 @@ const KioskOrderPage = () => {
         }
     };
 
-    const getAllergenLabel = (allergen: string) => {
-        const allergenLabels: Record<string, string> = {
-            'GLUTEN': 'Gluten',
-            'CRUSTACEANS': 'Crustacés',
-            'EGGS': 'Œufs',
-            'FISH': 'Poisson',
-            'PEANUTS': 'Arachides',
-            'SOYBEANS': 'Soja',
-            'MILK': 'Lait',
-            'NUTS': 'Fruits à coque',
-            'CELERY': 'Céleri',
-            'MUSTARD': 'Moutarde',
-            'SESAME_SEEDS': 'Graines de sésame',
-            'SULPHITES': 'Sulfites',
-            'LUPIN': 'Lupin',
-            'MOLLUSCS': 'Mollusques'
-        };
-        return allergenLabels[allergen] || allergen;
-    };
-
     const addToCart = (dish: Dish) => {
         const existingItem = cart.find(item => item.dishId === dish.id);
-
         if (existingItem) {
             setCart(cart.map(item =>
                 item.dishId === dish.id
@@ -99,15 +89,14 @@ const KioskOrderPage = () => {
                     : item
             ));
         } else {
-            const newItem: CartItem = {
+            setCart([...cart, {
                 dishId: dish.id,
                 dishName: dish.name,
                 unitPrice: dish.price,
                 quantity: 1,
                 category: dish.category,
                 allergens: dish.allergens
-            };
-            setCart([...cart, newItem]);
+            }]);
         }
     };
 
@@ -189,7 +178,8 @@ const KioskOrderPage = () => {
             listDishNumber: cart.map(item => ({
                 idDish: item.dishId,
                 number: item.quantity
-            }))
+            })),
+            flatDelivered: isDelivery // Ajout du champ de livraison
         };
 
         createOrder(orderData, {
@@ -201,7 +191,8 @@ const KioskOrderPage = () => {
                 setGuestName('');
                 setSelectedCategory('');
                 setSearchTerm('');
-                alert(`🎉 Commande créée avec succès pour ${customerInfo.name} !\nVotre numéro de commande vous sera communiqué à la caisse.`);
+                setIsDelivery(false); // Réinitialiser l'option de livraison
+                alert(`🎉 Commande créée avec succès pour ${customerInfo.name} !\n${isDelivery ? '🚚 Commande à livrer' : '🏪 Commande à retirer sur place'}\nVotre numéro de commande vous sera communiqué à la caisse.`);
             },
             onError: (error: any) => {
                 console.error('Erreur:', error);
@@ -210,46 +201,61 @@ const KioskOrderPage = () => {
         });
     };
 
+    // Vérifier si le restaurant sélectionné supporte la livraison
+    const restaurantSupportsDelivery = selectedRestaurant?.restaurantFeatures.includes('PLATEAUX_LIVRABLE') || false;
+
+    if (loadingRestaurants) {
+        return (
+            <div className="min-h-screen bg-base-200 flex items-center justify-center">
+                <div className="text-center">
+                    <span className="loading loading-spinner loading-lg"></span>
+                    <p className="mt-4 text-lg">Chargement des restaurants...</p>
+                </div>
+            </div>
+        );
+    }
 
     const renderStep = () => {
         switch (currentStep) {
             case 'restaurant':
                 return (
                     <div className="space-y-6">
-                        <div className="text-center space-y-4">
-                            <h1 className="text-6xl font-bold text-primary">Bienvenue chez Veg'N Bio</h1>
-                            <p className="text-2xl text-base-content/70">Choisissez votre restaurant</p>
-                        </div>
+                        <h2 className="text-4xl font-bold text-center">🏪 Choisissez votre Restaurant</h2>
 
-                        {loadingRestaurants ? (
-                            <div className="flex justify-center py-20">
-                                <span className="loading loading-spinner loading-lg"></span>
+                        {restaurants.length === 0 ? (
+                            <div className="text-center py-20">
+                                <div className="text-6xl mb-4">🏪</div>
+                                <h3 className="text-2xl font-bold mb-2">Aucun restaurant disponible</h3>
+                                <p className="text-base-content/70">Veuillez créer un restaurant pour commencer à prendre des commandes.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {restaurants.map((restaurant) => (
-                                    <div
-                                        key={restaurant.id}
-                                        onClick={() => {
-                                            setSelectedRestaurant(restaurant);
-                                            goToNextStep();
-                                        }}
-                                        className="card bg-base-100 shadow-xl hover:shadow-2xl transition-all cursor-pointer transform hover:scale-105"
-                                    >
+                                    <div key={restaurant.id}
+                                         className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow cursor-pointer transform hover:scale-105"
+                                         onClick={() => {
+                                             setSelectedRestaurant(restaurant);
+                                             goToNextStep();
+                                         }}>
                                         <div className="card-body">
                                             <h2 className="card-title text-xl">{restaurant.name}</h2>
-                                            <p className="text-sm opacity-70">
-                                                📍 {restaurant.address.city}
-                                            </p>
+                                            <p className="text-sm opacity-70">📍 {restaurant.address.streetNumber} {restaurant.address.streetName}, {restaurant.address.city}</p>
                                             <p className="text-sm">
                                                 🪑 {restaurant.numberPlace} places
                                             </p>
                                             {restaurant.restaurantFeatures.length > 0 && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
                                                     {restaurant.restaurantFeatures.slice(0, 3).map((feature) => (
-                                                        <span key={feature} className="badge badge-outline badge-xs">
-                              {feature.replace('_', ' ')}
-                            </span>
+                                                        <span key={feature} className={`badge badge-xs ${
+                                                            feature === 'PLATEAUX_LIVRABLE' ? 'badge-success' :
+                                                                feature === 'WIFI_HAUT_DEBIT' ? 'badge-info' :
+                                                                    'badge-outline'
+                                                        }`}>
+                                                            {feature === 'PLATEAUX_LIVRABLE' ? '🚚 Livraison' :
+                                                                feature === 'WIFI_HAUT_DEBIT' ? '📶 WiFi' :
+                                                                    feature === 'PLATEAUX_MEMBRES' ? '👥 Plateaux membres' :
+                                                                        feature.replace('_', ' ')}
+                                                        </span>
                                                     ))}
                                                 </div>
                                             )}
@@ -273,6 +279,9 @@ const KioskOrderPage = () => {
                                 <div>
                                     <h2 className="text-2xl font-bold">{selectedRestaurant?.name}</h2>
                                     <p className="opacity-90">📍 {selectedRestaurant?.address.city}</p>
+                                    {restaurantSupportsDelivery && (
+                                        <div className="badge badge-success badge-sm mt-1">🚚 Livraison disponible</div>
+                                    )}
                                 </div>
                                 <div className="text-right">
                                     <div className="text-lg font-bold">{getTotalItems()} articles</div>
@@ -317,25 +326,27 @@ const KioskOrderPage = () => {
                                                     <div className="text-xl font-bold text-primary">{dish.price.toFixed(2)}€</div>
                                                 </div>
 
-                                                <h3 className="card-title text-lg">{dish.name}</h3>
-
+                                                <h3 className="font-bold text-lg mb-1">{dish.name}</h3>
                                                 {dish.description && (
-                                                    <p className="text-sm opacity-70 line-clamp-2">{dish.description}</p>
+                                                    <p className="text-sm text-base-content/70 mb-2">{dish.description}</p>
                                                 )}
 
                                                 {dish.allergens.length > 0 && (
-                                                    <div className="text-xs text-warning">
-                                                        ⚠️ {dish.allergens.slice(0, 2).map(getAllergenLabel).join(', ')}
-                                                        {dish.allergens.length > 2 && '...'}
+                                                    <div className="flex flex-wrap gap-1 mb-3">
+                                                        {dish.allergens.map(allergen => (
+                                                            <span key={allergen} className="badge badge-warning badge-xs">
+                                                                ⚠️ {allergen.replace('_', ' ')}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 )}
 
-                                                <div className="card-actions justify-end mt-2">
+                                                <div className="card-actions justify-end">
                                                     <button
                                                         onClick={() => addToCart(dish)}
                                                         className="btn btn-primary btn-sm"
                                                     >
-                                                        + Ajouter
+                                                        Ajouter
                                                     </button>
                                                 </div>
                                             </div>
@@ -344,84 +355,137 @@ const KioskOrderPage = () => {
                             </div>
                         )}
 
-                        {/* Bouton continuer */}
+                        {/* Bouton fixe en bas */}
                         {cart.length > 0 && (
-                            <div className="fixed bottom-4 right-4">
+                            <div className="fixed bottom-4 right-4 z-50">
                                 <button
                                     onClick={goToNextStep}
-                                    className="btn btn-success btn-lg shadow-xl"
+                                    className="btn btn-primary btn-lg shadow-xl"
                                 >
-                                    Voir le panier ({getTotalItems()}) →
+                                    🛒 Panier ({getTotalItems()}) - {getTotalPrice().toFixed(2)}€
                                 </button>
                             </div>
                         )}
+
+                        {/* Navigation */}
+                        <div className="flex gap-4 justify-center pb-20">
+                            <button onClick={goToPreviousStep} className="btn btn-outline btn-lg">
+                                ← Changer de restaurant
+                            </button>
+                        </div>
                     </div>
                 );
 
             case 'cart':
                 return (
-                    <div className="space-y-6 max-w-4xl mx-auto">
+                    <div className="space-y-6">
                         <h2 className="text-3xl font-bold text-center">🛒 Votre Panier</h2>
 
                         {cart.length === 0 ? (
                             <div className="text-center py-20">
                                 <div className="text-6xl mb-4">🛒</div>
-                                <p className="text-xl text-base-content/50">Votre panier est vide</p>
-                                <button onClick={goToPreviousStep} className="btn btn-primary mt-4">
+                                <h3 className="text-2xl font-bold mb-2">Votre panier est vide</h3>
+                                <p className="text-base-content/70 mb-6">Ajoutez des plats pour continuer</p>
+                                <button onClick={goToPreviousStep} className="btn btn-primary btn-lg">
                                     ← Retour au menu
                                 </button>
                             </div>
                         ) : (
                             <>
-                                <div className="space-y-4">
-                                    {cart.map((item, index) => (
-                                        <div key={index} className="card bg-base-100 shadow-lg">
-                                            <div className="card-body">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="text-2xl">{getCategoryEmoji(item.category)}</div>
-                                                            <div>
-                                                                <h3 className="font-bold text-lg">{item.dishName}</h3>
-                                                                <p className="text-sm opacity-70">{item.unitPrice.toFixed(2)}€ l'unité</p>
-                                                                {item.allergens.length > 0 && (
-                                                                    <div className="text-xs text-warning mt-1">
-                                                                        ⚠️ {item.allergens.map(getAllergenLabel).join(', ')}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                {/* Option de livraison si disponible */}
+                                {restaurantSupportsDelivery && (
+                                    <div className="card bg-base-100 shadow-lg">
+                                        <div className="card-body">
+                                            <h3 className="card-title">🚚 Options de récupération</h3>
+                                            <div className="form-control">
+                                                <label className="label cursor-pointer justify-start gap-4">
+                                                    <input
+                                                        type="radio"
+                                                        name="deliveryOption"
+                                                        className="radio radio-primary"
+                                                        checked={!isDelivery}
+                                                        onChange={() => setIsDelivery(false)}
+                                                    />
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl">🏪</span>
+                                                        <div>
+                                                            <div className="font-bold">Retrait sur place</div>
+                                                            <div className="text-sm opacity-70">Gratuit - Venez récupérer votre commande</div>
                                                         </div>
                                                     </div>
+                                                </label>
+                                            </div>
+                                            <div className="form-control">
+                                                <label className="label cursor-pointer justify-start gap-4">
+                                                    <input
+                                                        type="radio"
+                                                        name="deliveryOption"
+                                                        className="radio radio-primary"
+                                                        checked={isDelivery}
+                                                        onChange={() => setIsDelivery(true)}
+                                                    />
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl">🚚</span>
+                                                        <div>
+                                                            <div className="font-bold">Livraison de plateaux</div>
+                                                            <div className="text-sm opacity-70">Service de livraison disponible</div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
+                                {/* Liste des articles */}
+                                <div className="space-y-4">
+                                    {cart.map((item) => (
+                                        <div key={item.dishId} className="card bg-base-100 shadow-lg">
+                                            <div className="card-body">
+                                                <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="text-2xl">{getCategoryEmoji(item.category)}</div>
+                                                        <div>
+                                                            <h3 className="font-bold text-lg">{item.dishName}</h3>
+                                                            <p className="text-sm opacity-70">{item.unitPrice.toFixed(2)}€ l'unité</p>
+                                                            {item.allergens.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                                    {item.allergens.map(allergen => (
+                                                                        <span key={allergen} className="badge badge-warning badge-xs">
+                                                                            ⚠️ {allergen.replace('_', ' ')}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="join">
                                                             <button
                                                                 onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
-                                                                className="btn btn-circle btn-sm btn-outline"
+                                                                className="btn btn-sm join-item"
                                                             >
                                                                 -
                                                             </button>
-                                                            <span className="text-xl font-bold w-12 text-center">{item.quantity}</span>
+                                                            <span className="join-item btn btn-sm bg-base-200">
+                                                                {item.quantity}
+                                                            </span>
                                                             <button
                                                                 onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
-                                                                className="btn btn-circle btn-sm btn-outline"
+                                                                className="btn btn-sm join-item"
                                                             >
                                                                 +
                                                             </button>
                                                         </div>
-
                                                         <div className="text-right">
-                                                            <div className="text-xl font-bold text-primary">
-                                                                {(item.unitPrice * item.quantity).toFixed(2)}€
-                                                            </div>
+                                                            <div className="font-bold text-lg">{(item.unitPrice * item.quantity).toFixed(2)}€</div>
+                                                            <button
+                                                                onClick={() => removeFromCart(item.dishId)}
+                                                                className="btn btn-error btn-xs"
+                                                            >
+                                                                Supprimer
+                                                            </button>
                                                         </div>
-
-                                                        <button
-                                                            onClick={() => removeFromCart(item.dishId)}
-                                                            className="btn btn-circle btn-sm btn-error"
-                                                        >
-                                                            ×
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -430,16 +494,24 @@ const KioskOrderPage = () => {
                                 </div>
 
                                 {/* Total */}
-                                <div className="card bg-primary text-primary-content shadow-xl">
+                                <div className="card bg-primary text-primary-content shadow-lg">
                                     <div className="card-body">
-                                        <div className="flex justify-between items-center text-2xl font-bold">
-                                            <span>Total ({getTotalItems()} articles)</span>
-                                            <span>{getTotalPrice().toFixed(2)}€</span>
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <h3 className="text-2xl font-bold">Total de votre commande</h3>
+                                                <p className="opacity-90">
+                                                    {getTotalItems()} articles • {isDelivery ? '🚚 Livraison' : '🏪 Retrait sur place'}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-3xl font-bold">{getTotalPrice().toFixed(2)}€</div>
+                                                <div className="text-sm opacity-90">TTC</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Boutons */}
+                                {/* Boutons de navigation */}
                                 <div className="flex gap-4 justify-center">
                                     <button onClick={goToPreviousStep} className="btn btn-outline btn-lg">
                                         ← Continuer les achats
@@ -481,7 +553,10 @@ const KioskOrderPage = () => {
                                             <div className="max-h-80 overflow-y-auto space-y-2">
                                                 {users.length === 0 ? (
                                                     <div className="text-center py-8 text-base-content/50">
-                                                        {searchTerm ? 'Aucun client trouvé' : 'Tapez pour rechercher un client'}
+                                                        {searchTerm ?
+                                                            `Aucun client trouvé pour "${searchTerm}"` :
+                                                            "Tapez pour rechercher un client"
+                                                        }
                                                     </div>
                                                 ) : (
                                                     users.map((user) => (
@@ -491,24 +566,28 @@ const KioskOrderPage = () => {
                                                                 setSelectedUser(user);
                                                                 setGuestName('');
                                                             }}
-                                                            className={`card cursor-pointer transition-all hover:shadow-md ${
-                                                                selectedUser?.id === user.id
-                                                                    ? 'bg-primary text-primary-content shadow-lg border-2 border-primary'
-                                                                    : 'bg-base-200 hover:bg-base-300'
+                                                            className={`card bg-base-200 shadow cursor-pointer transition-colors ${
+                                                                selectedUser?.id === user.id ?
+                                                                    'bg-primary text-primary-content' :
+                                                                    'hover:bg-base-300'
                                                             }`}
                                                         >
-                                                            <div className="card-body compact p-4">
-                                                                <div className="flex items-center justify-between">
+                                                            <div className="card-body p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="avatar placeholder">
+                                                                        <div className="bg-neutral text-neutral-content rounded-full w-10">
+                                                                            <span className="text-xl">{user.fullName.charAt(0)}</span>
+                                                                        </div>
+                                                                    </div>
                                                                     <div>
-                                                                        <h4 className="font-bold text-lg">{user.fullName}</h4>
-                                                                        <p className="text-sm opacity-70">@{user.username}</p>
+                                                                        <div className="font-bold">{user.fullName}</div>
+                                                                        <div className="text-sm opacity-70">{user.email}</div>
                                                                     </div>
-                                                                    <div className="text-right">
-                                                                        <p className="text-sm opacity-70">{user.email}</p>
-                                                                        {selectedUser?.id === user.id && (
-                                                                            <div className="badge badge-accent mt-1">✓ Sélectionné</div>
-                                                                        )}
-                                                                    </div>
+                                                                    {selectedUser?.id === user.id && (
+                                                                        <div className="ml-auto">
+                                                                            <span className="text-2xl">✓</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -523,11 +602,11 @@ const KioskOrderPage = () => {
                             {/* Client occasionnel */}
                             <div className="card bg-base-100 shadow-xl">
                                 <div className="card-body">
-                                    <h3 className="card-title text-xl mb-4">👥 Client occasionnel</h3>
+                                    <h3 className="card-title text-xl mb-4">👤 Client occasionnel</h3>
 
                                     <div className="space-y-4">
-                                        <p className="text-sm text-base-content/70">
-                                            Pour un client qui n'a pas de compte, entrez simplement son nom :
+                                        <p className="text-sm opacity-70">
+                                            Pour les clients qui ne sont pas encore inscrits dans le système.
                                         </p>
 
                                         <input
@@ -539,9 +618,9 @@ const KioskOrderPage = () => {
                                                     setSelectedUser(null);
                                                 }
                                             }}
-                                            placeholder="Nom du client occasionnel"
+                                            placeholder="Nom du client occasionnel..."
                                             className={`input input-bordered input-lg w-full ${
-                                                guestName && !selectedUser ? 'input-success' : ''
+                                                guestName.trim() && !selectedUser ? 'input-success' : ''
                                             }`}
                                         />
 
@@ -558,11 +637,11 @@ const KioskOrderPage = () => {
                             </div>
                         </div>
 
-                        {/* Récapitulatif de la commande */}
+                        {/* Récapitulatif de la commande avec option de livraison */}
                         <div className="card bg-base-200 shadow-lg">
                             <div className="card-body">
                                 <h3 className="card-title mb-3">📋 Récapitulatif de votre commande</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                                     <div className="bg-base-100 p-4 rounded-lg">
                                         <div className="text-2xl mb-1">🏪</div>
                                         <div className="font-bold">{selectedRestaurant?.name}</div>
@@ -572,6 +651,11 @@ const KioskOrderPage = () => {
                                         <div className="text-2xl mb-1">🛒</div>
                                         <div className="font-bold">{getTotalItems()} articles</div>
                                         <div className="text-sm opacity-70">{cart.length} types de plats</div>
+                                    </div>
+                                    <div className="bg-base-100 p-4 rounded-lg">
+                                        <div className="text-2xl mb-1">{isDelivery ? '🚚' : '🏪'}</div>
+                                        <div className="font-bold">{isDelivery ? 'Livraison' : 'Retrait'}</div>
+                                        <div className="text-sm opacity-70">{isDelivery ? 'Plateaux livrés' : 'Sur place'}</div>
                                     </div>
                                     <div className="bg-base-100 p-4 rounded-lg">
                                         <div className="text-2xl mb-1">💰</div>
@@ -617,115 +701,125 @@ const KioskOrderPage = () => {
                                             {selectedUser ? selectedUser.fullName : guestName}
                                         </p>
                                         {selectedUser && (
-                                            <p className="text-sm opacity-70">@{selectedUser.username}</p>
-                                        )}
-                                        {!selectedUser && guestName && (
-                                            <p className="text-sm opacity-70">Client occasionnel</p>
+                                            <p className="text-sm opacity-70">{selectedUser.email}</p>
                                         )}
                                     </div>
 
                                     <div>
                                         <h4 className="font-bold text-lg mb-2">🏪 Restaurant</h4>
-                                        <p className="font-medium">{selectedRestaurant?.name}</p>
+                                        <p className="text-xl">{selectedRestaurant?.name}</p>
                                         <p className="text-sm opacity-70">{selectedRestaurant?.address.city}</p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-bold text-lg mb-2">{isDelivery ? '🚚' : '🏪'} Mode de récupération</h4>
+                                        <p className="text-xl">{isDelivery ? 'Livraison de plateaux' : 'Retrait sur place'}</p>
+                                        <p className="text-sm opacity-70">
+                                            {isDelivery ? 'Vos plateaux seront livrés' : 'À récupérer au restaurant'}
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-bold text-lg mb-2">💰 Total</h4>
+                                        <p className="text-2xl font-bold text-primary">{getTotalPrice().toFixed(2)}€</p>
+                                        <p className="text-sm opacity-70">{getTotalItems()} articles</p>
                                     </div>
                                 </div>
 
                                 <div className="divider"></div>
 
-                                <div className="space-y-2">
-                                    <h4 className="font-bold text-lg">🛒 Articles commandés</h4>
-                                    {cart.map((item, index) => (
-                                        <div key={index} className="flex justify-between items-center">
-                                            <span>{item.quantity}x {item.dishName}</span>
-                                            <span className="font-medium">{(item.unitPrice * item.quantity).toFixed(2)}€</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="divider"></div>
-
-                                <div className="text-2xl font-bold text-primary">
-                                    Total : {getTotalPrice().toFixed(2)}€
-                                </div>
-
-                                <div className="card-actions justify-center gap-4 mt-6">
-                                    <button onClick={goToPreviousStep} className="btn btn-outline btn-lg">
-                                        ← Modifier
-                                    </button>
-                                    <button
-                                        onClick={finalizeOrder}
-                                        disabled={creatingOrder}
-                                        className="btn btn-success btn-lg"
-                                    >
-                                        {creatingOrder ? (
-                                            <>
-                                                <span className="loading loading-spinner"></span>
-                                                Envoi en cours...
-                                            </>
-                                        ) : (
-                                            '✅ Finaliser la commande'
-                                        )}
-                                    </button>
+                                <div className="text-left">
+                                    <h4 className="font-bold text-lg mb-3">🍽️ Détail des plats</h4>
+                                    <div className="space-y-2">
+                                        {cart.map((item) => (
+                                            <div key={item.dishId} className="flex justify-between items-center bg-base-200 p-3 rounded-lg">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xl">{getCategoryEmoji(item.category)}</span>
+                                                    <div>
+                                                        <div className="font-medium">{item.dishName}</div>
+                                                        <div className="text-sm opacity-70">{item.unitPrice.toFixed(2)}€ × {item.quantity}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="font-bold">{(item.unitPrice * item.quantity).toFixed(2)}€</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        <div className="flex gap-4 justify-center">
+                            <button onClick={goToPreviousStep} className="btn btn-outline btn-lg">
+                                ← Modifier
+                            </button>
+                            <button
+                                onClick={finalizeOrder}
+                                disabled={creatingOrder}
+                                className="btn btn-success btn-lg"
+                            >
+                                {creatingOrder ? (
+                                    <>
+                                        <span className="loading loading-spinner"></span>
+                                        Création en cours...
+                                    </>
+                                ) : (
+                                    <>🎯 Finaliser la commande</>
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="alert alert-info">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>
+                                {isDelivery
+                                    ? "Une fois confirmée, votre commande sera préparée et livrée selon les modalités du restaurant."
+                                    : "Une fois confirmée, votre commande sera préparée et vous pourrez la récupérer au restaurant."
+                                }
+                            </span>
+                        </div>
                     </div>
                 );
+
+            default:
+                return <div>Étape inconnue</div>;
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-            {/* Navbar */}
+        <div className="min-h-screen bg-base-200">
             <Navbar />
 
-            <div className="p-4">
-                {/* Header avec navigation */}
-                {currentStep !== 'restaurant' && (
-                    <div className="max-w-6xl mx-auto mb-6">
-                        <div className="flex items-center justify-between bg-white/80 backdrop-blur rounded-lg p-4 shadow-lg">
-                            <button
-                                onClick={goToPreviousStep}
-                                className="btn btn-ghost btn-lg"
-                            >
-                                ← Retour
-                            </button>
-
-                            <div className="flex items-center gap-2">
-                                <div className={`badge ${currentStep === 'restaurant' ? 'badge-primary' : 'badge-outline'}`}>
-                                    1. Restaurant
-                                </div>
-                                <div className={`badge ${currentStep === 'menu' ? 'badge-primary' : 'badge-outline'}`}>
-                                    2. Menu
-                                </div>
-                                <div className={`badge ${currentStep === 'cart' ? 'badge-primary' : 'badge-outline'}`}>
-                                    3. Panier
-                                </div>
-                                <div className={`badge ${currentStep === 'customer' ? 'badge-primary' : 'badge-outline'}`}>
-                                    4. Client
-                                </div>
-                                <div className={`badge ${currentStep === 'confirmation' ? 'badge-primary' : 'badge-outline'}`}>
-                                    5. Confirmation
-                                </div>
-                            </div>
-
-                            <div className="text-right">
-                                {cart.length > 0 && (
-                                    <div className="text-sm">
-                                        <div>{getTotalItems()} articles</div>
-                                        <div className="font-bold text-primary">{getTotalPrice().toFixed(2)}€</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Contenu principal */}
-                <div className="max-w-7xl mx-auto">
-                    {renderStep()}
+            {/* Indicateur d'étapes */}
+            <div className="bg-base-100 shadow-sm sticky top-16 z-40">
+                <div className="container mx-auto px-4 py-4">
+                    <ul className="steps steps-horizontal w-full">
+                        <li className={`step ${currentStep === 'restaurant' ? 'step-primary' :
+                            ['menu', 'cart', 'customer', 'confirmation'].includes(currentStep) ? 'step-primary' : ''}`}>
+                            Restaurant
+                        </li>
+                        <li className={`step ${currentStep === 'menu' ? 'step-primary' :
+                            ['cart', 'customer', 'confirmation'].includes(currentStep) ? 'step-primary' : ''}`}>
+                            Menu
+                        </li>
+                        <li className={`step ${currentStep === 'cart' ? 'step-primary' :
+                            ['customer', 'confirmation'].includes(currentStep) ? 'step-primary' : ''}`}>
+                            Panier
+                        </li>
+                        <li className={`step ${currentStep === 'customer' ? 'step-primary' :
+                            currentStep === 'confirmation' ? 'step-primary' : ''}`}>
+                            Client
+                        </li>
+                        <li className={`step ${currentStep === 'confirmation' ? 'step-primary' : ''}`}>
+                            Confirmation
+                        </li>
+                    </ul>
                 </div>
+            </div>
+
+            <div className="container mx-auto px-4 py-8">
+                {renderStep()}
             </div>
         </div>
     );

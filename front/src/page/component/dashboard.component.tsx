@@ -5,9 +5,42 @@ import type {OrderFilters} from "../../api/menu/dto/dto.ts";
 import {useGetAllOrders, useOrderById, useUpdateOrderStatus} from "../../api/menu/hook/hook.ts";
 import {useQueryClient} from "@tanstack/react-query";
 
+// Interface mise à jour avec le champ flatDelivered
+interface OrderSummaryWithDelivery {
+    id: string;
+    status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELED';
+    customerName: string;
+    totalAmount: number;
+    createdAt: string;
+    flatDelivered: boolean; // Ajout du champ livraison
+    restaurant?: {
+        name: string;
+        id: string;
+    };
+}
+
+interface OrderDetailWithDelivery {
+    id: string;
+    status: string;
+    customerId: string;
+    customerName: string;
+    totalAmount: number;
+    lines: Array<{
+        id: string;
+        dishName: string;
+        unitPrice: number;
+        quantity: number;
+        lineTotal: number;
+        allergens: string[];
+    }>;
+    createdAt: string;
+    flatDelivered: boolean; // Ajout du champ livraison
+}
+
 interface OrderFiltersForm {
     status: string;
     dateFilter: string;
+    deliveryFilter: string; // Nouveau filtre pour la livraison
 }
 
 const OrdersDashboard: React.FC = () => {
@@ -20,6 +53,7 @@ const OrdersDashboard: React.FC = () => {
         defaultValues: {
             status: '',
             dateFilter: '',
+            deliveryFilter: '', // Nouveau filtre
         }
     });
 
@@ -48,6 +82,15 @@ const OrdersDashboard: React.FC = () => {
     } = useOrderById(selectedOrderId || '');
 
     const updateStatusMutation = useUpdateOrderStatus();
+
+    // Filtrer côté client pour la livraison (en attendant que le backend supporte ce filtre)
+    const filteredOrders = orders?.content.filter(order => {
+        const orderWithDelivery = order as OrderSummaryWithDelivery;
+        if (!watchedFilters.deliveryFilter) return true;
+        if (watchedFilters.deliveryFilter === 'delivery') return orderWithDelivery.flatDelivered;
+        if (watchedFilters.deliveryFilter === 'pickup') return !orderWithDelivery.flatDelivered;
+        return true;
+    }) || [];
 
     const handleOrderDetail = (orderId: string) => {
         setSelectedOrderId(orderId);
@@ -97,6 +140,7 @@ const OrdersDashboard: React.FC = () => {
         }
         return new Date();
     };
+
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
             case 'PENDING': return 'badge-warning';
@@ -131,6 +175,16 @@ const OrdersDashboard: React.FC = () => {
         return labels[status] || status;
     };
 
+    // Fonctions pour les statistiques de livraison
+    const getDeliveryStats = () => {
+        if (!orders?.content) return { delivery: 0, pickup: 0 };
+        const ordersWithDelivery = orders.content as OrderSummaryWithDelivery[];
+        return {
+            delivery: ordersWithDelivery.filter(o => o.flatDelivered).length,
+            pickup: ordersWithDelivery.filter(o => !o.flatDelivered).length
+        };
+    };
+
     if (isError) {
         return (
             <div className="max-w-7xl mx-auto p-6">
@@ -141,6 +195,8 @@ const OrdersDashboard: React.FC = () => {
         );
     }
 
+    const deliveryStats = getDeliveryStats();
+
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
             {/* Header avec boutons d'action */}
@@ -149,6 +205,11 @@ const OrdersDashboard: React.FC = () => {
                     <h1 className="text-3xl font-bold">Gestion des Commandes</h1>
                     <div className="text-sm text-base-content/70 mt-1">
                         {orders && `${orders.totalElements} commande(s) au total`}
+                        {orders && orders.totalElements > 0 && (
+                            <span className="ml-2">
+                                • 🚚 {deliveryStats.delivery} livraisons • 🏪 {deliveryStats.pickup} retraits
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -214,34 +275,41 @@ const OrdersDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Statistiques rapides */}
+            {/* Statistiques rapides avec livraison */}
             {orders && orders.totalElements > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="stat bg-base-100 rounded-lg shadow">
                         <div className="stat-title">En attente</div>
                         <div className="stat-value text-warning">
-                            {orders.content.filter(o => o.status === 'PENDING').length}
+                            {filteredOrders.filter(o => o.status === 'PENDING').length}
                         </div>
                         <div className="stat-desc">Commandes à confirmer</div>
                     </div>
                     <div className="stat bg-base-100 rounded-lg shadow">
                         <div className="stat-title">En préparation</div>
                         <div className="stat-value text-primary">
-                            {orders.content.filter(o => o.status === 'PREPARING').length}
+                            {filteredOrders.filter(o => o.status === 'PREPARING').length}
                         </div>
                         <div className="stat-desc">En cours de préparation</div>
                     </div>
                     <div className="stat bg-base-100 rounded-lg shadow">
                         <div className="stat-title">Prêtes</div>
                         <div className="stat-value text-success">
-                            {orders.content.filter(o => o.status === 'READY').length}
+                            {filteredOrders.filter(o => o.status === 'READY').length}
                         </div>
                         <div className="stat-desc">À servir</div>
                     </div>
                     <div className="stat bg-base-100 rounded-lg shadow">
+                        <div className="stat-title">🚚 Livraisons</div>
+                        <div className="stat-value text-info">
+                            {deliveryStats.delivery}
+                        </div>
+                        <div className="stat-desc">À livrer/livrées</div>
+                    </div>
+                    <div className="stat bg-base-100 rounded-lg shadow">
                         <div className="stat-title">CA affiché</div>
                         <div className="stat-value text-accent">
-                            {orders.content.reduce((sum, o) => sum + o.totalAmount, 0).toFixed(2)}€
+                            {filteredOrders.reduce((sum, o) => sum + o.totalAmount, 0).toFixed(2)}€
                         </div>
                         <div className="stat-desc">Chiffre d'affaires</div>
                     </div>
@@ -279,7 +347,7 @@ const OrdersDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Filtres */}
+            {/* Filtres avec option livraison */}
             <div className="card bg-base-100 shadow">
                 <div className="card-body">
                     <h3 className="card-title mb-4">🔍 Filtres</h3>
@@ -299,6 +367,20 @@ const OrdersDashboard: React.FC = () => {
                                 <option value="READY">Prête</option>
                                 <option value="COMPLETED">Terminée</option>
                                 <option value="CANCELED">Annulée</option>
+                            </select>
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Type de service</span>
+                            </label>
+                            <select
+                                className="select select-bordered w-full max-w-xs"
+                                {...register('deliveryFilter')}
+                            >
+                                <option value="">Tous les types</option>
+                                <option value="delivery">🚚 Livraisons uniquement</option>
+                                <option value="pickup">🏪 Retraits uniquement</option>
                             </select>
                         </div>
 
@@ -326,13 +408,13 @@ const OrdersDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Liste des commandes */}
+            {/* Liste des commandes avec indicateur de livraison */}
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20">
                     <span className="loading loading-spinner loading-lg mb-4"></span>
                     <p className="text-base-content/70">Chargement des commandes...</p>
                 </div>
-            ) : orders?.content.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
                 <div className="text-center py-10">
                     <div className="text-base-content/50 text-lg">Aucune commande trouvée avec ces filtres</div>
                     <button
@@ -344,61 +426,76 @@ const OrdersDashboard: React.FC = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {orders?.content.map((order) => (
-                        <div key={order.id} className="card bg-base-100 shadow hover:shadow-lg transition-all duration-200 border border-base-200">
-                            <div className="card-body">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <div className="card-title text-lg">#{order.id.slice(-6)}</div>
-                                        <div className="text-sm text-base-content/70 font-medium">{order.customerName}</div>
-                                    </div>
-                                    <div className={`badge ${getStatusBadgeClass(order.status)}`}>
-                                        {getStatusLabel(order.status)}
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-between items-center mt-4">
-                                    <div>
-                                        <div className="font-semibold text-lg text-primary">{order.totalAmount.toFixed(2)}€</div>
-                                        <div className="text-xs text-base-content/50">
-                                            {parseBackendDate(order.createdAt).toLocaleString('fr-FR')}
+                    {filteredOrders.map((order) => {
+                        const orderWithDelivery = order as OrderSummaryWithDelivery;
+                        return (
+                            <div key={order.id} className="card bg-base-100 shadow hover:shadow-lg transition-all duration-200 border border-base-200">
+                                <div className="card-body">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="card-title text-lg">#{order.id.slice(-6)}</div>
+                                                {/* Indicateur de livraison */}
+                                                <div className={`badge badge-sm ${orderWithDelivery.flatDelivered ? 'badge-info' : 'badge-outline'}`}>
+                                                    {orderWithDelivery.flatDelivered ? '🚚 Livraison' : '🏪 Retrait'}
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-base-content/70 font-medium">{order.customerName}</div>
+                                        </div>
+                                        <div className={`badge ${getStatusBadgeClass(order.status)}`}>
+                                            {getStatusLabel(order.status)}
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="card-actions justify-between mt-4">
-                                    <button
-                                        className="btn btn-sm btn-outline"
-                                        onClick={() => handleOrderDetail(order.id)}
-                                    >
-                                        👁️ Détails
-                                    </button>
-
-                                    <div className="dropdown dropdown-end">
-                                        <div tabIndex={0} role="button" className="btn btn-sm btn-primary">
-                                            Actions ▼
+                                    <div className="flex justify-between items-center mt-4">
+                                        <div>
+                                            <div className="font-semibold text-lg text-primary">{order.totalAmount.toFixed(2)}€</div>
+                                            <div className="text-xs text-base-content/50">
+                                                {parseBackendDate(order.createdAt).toLocaleString('fr-FR')}
+                                            </div>
                                         </div>
-                                        <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border">
-                                            {getAvailableActions(order.status).map((action) => (
-                                                <li key={action}>
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(order.id, action)}
-                                                        disabled={updateStatusMutation.isPending}
-                                                        className="flex items-center gap-2"
-                                                    >
-                                                        {updateStatusMutation.isPending ? (
-                                                            <span className="loading loading-spinner loading-xs"></span>
-                                                        ) : null}
-                                                        Marquer comme {getStatusLabel(action)}
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                        {/* Indicateur visuel plus grand pour les livraisons urgentes */}
+                                        {orderWithDelivery.flatDelivered && (order.status === 'READY' || order.status === 'PREPARING') && (
+                                            <div className="text-2xl animate-bounce" title="Livraison en cours">
+                                                🚚
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="card-actions justify-between mt-4">
+                                        <button
+                                            className="btn btn-sm btn-outline"
+                                            onClick={() => handleOrderDetail(order.id)}
+                                        >
+                                            👁️ Détails
+                                        </button>
+
+                                        <div className="dropdown dropdown-end">
+                                            <div tabIndex={0} role="button" className="btn btn-sm btn-primary">
+                                                Actions ▼
+                                            </div>
+                                            <ul tabIndex={0} className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border">
+                                                {getAvailableActions(order.status).map((action) => (
+                                                    <li key={action}>
+                                                        <button
+                                                            onClick={() => handleStatusUpdate(order.id, action)}
+                                                            disabled={updateStatusMutation.isPending}
+                                                            className="flex items-center gap-2"
+                                                        >
+                                                            {updateStatusMutation.isPending ? (
+                                                                <span className="loading loading-spinner loading-xs"></span>
+                                                            ) : null}
+                                                            Marquer comme {getStatusLabel(action)}
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -438,13 +535,18 @@ const OrdersDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Modal de détail */}
+            {/* Modal de détail avec information de livraison */}
             {isDetailModalOpen && selectedOrder && (
                 <div className="modal modal-open">
                     <div className="modal-box w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 sticky top-0 bg-base-100 pb-4 border-b">
                             <div>
-                                <h3 className="font-bold text-xl">Commande #{selectedOrder.id?.slice(-6) || 'N/A'}</h3>
+                                <div className="flex items-center gap-3">
+                                    <h3 className="font-bold text-xl">Commande #{selectedOrder.id?.slice(-6) || 'N/A'}</h3>
+                                    <div className={`badge ${(selectedOrder as OrderDetailWithDelivery).flatDelivered ? 'badge-info' : 'badge-outline'}`}>
+                                        {(selectedOrder as OrderDetailWithDelivery).flatDelivered ? '🚚 Livraison' : '🏪 Retrait sur place'}
+                                    </div>
+                                </div>
                                 <p className="text-sm text-base-content/70 mt-1">
                                     {parseBackendDate(selectedOrder.createdAt).toLocaleString('fr-FR')}
                                 </p>
@@ -471,6 +573,12 @@ const OrdersDashboard: React.FC = () => {
                                         <div className="flex items-center gap-2">
                                             <strong>📅 Date:</strong> {parseBackendDate(selectedOrder.createdAt).toLocaleString('fr-FR')}
                                         </div>
+                                        <div className="flex items-center gap-2">
+                                            <strong>{(selectedOrder as OrderDetailWithDelivery).flatDelivered ? '🚚' : '🏪'} Service:</strong>
+                                            <span className="font-medium">
+                                                {(selectedOrder as OrderDetailWithDelivery).flatDelivered ? 'Livraison de plateaux' : 'Retrait sur place'}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
@@ -483,6 +591,14 @@ const OrdersDashboard: React.FC = () => {
                                             <strong>💰 Total:</strong>
                                             <span className="text-xl font-bold text-primary">{selectedOrder.totalAmount.toFixed(2)}€</span>
                                         </div>
+                                        {(selectedOrder as OrderDetailWithDelivery).flatDelivered && (
+                                            <div className="alert alert-info">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span className="text-sm">Cette commande doit être livrée</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
