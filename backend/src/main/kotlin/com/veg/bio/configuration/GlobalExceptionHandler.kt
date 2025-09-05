@@ -6,8 +6,15 @@ import com.veg.bio.authentification.UserExist
 import com.veg.bio.keycloak.ErrorKeycloak
 import com.veg.bio.keycloak.ErrorRefreshToken
 import com.veg.bio.menu.NotGoodPrice
+import com.veg.bio.reservation.InsufficientCapacityException
+import com.veg.bio.reservation.InvalidReservationTimeException
+import com.veg.bio.reservation.ReservationConflictException
+import com.veg.bio.reservation.ReservationNotFoundException
+import com.veg.bio.reservation.RestaurantClosedException
+import com.veg.bio.reservation.UnauthorizedReservationAccessException
 import com.veg.bio.user.NotFoundUserWithClientId
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
@@ -89,5 +96,29 @@ class GlobalExceptionHandler {
         return mapOf(
             "error" to "Not good price the price is between 3 and 10000"
         )
+    }
+
+    @ExceptionHandler(ReservationNotFoundException::class)
+    fun handleReservationNotFound(ex: ReservationNotFoundException): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(mapOf("error" to "NOT_FOUND", "message" to ex.message!!))
+    }
+
+    @ExceptionHandler(ReservationConflictException::class)
+    fun handleReservationConflict(ex: ReservationConflictException): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(mapOf("error" to "CONFLICT", "message" to ex.message!!))
+    }
+
+    @ExceptionHandler(UnauthorizedReservationAccessException::class)
+    fun handleUnauthorizedAccess(ex: UnauthorizedReservationAccessException): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(mapOf("error" to "FORBIDDEN", "message" to ex.message!!))
+    }
+
+    @ExceptionHandler(InvalidReservationTimeException::class, RestaurantClosedException::class, InsufficientCapacityException::class)
+    fun handleBadRequest(ex: RuntimeException): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(mapOf("error" to "BAD_REQUEST", "message" to ex.message!!))
     }
 }

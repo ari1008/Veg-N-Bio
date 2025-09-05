@@ -13,6 +13,10 @@ import MenuPage from "./page/menu.page.tsx";
 import CreateDishPage from "./page/create.dish.page.tsx";
 import KioskOrderPage from "./page/kiosk.order.page.tsx";
 
+import ReservationPage from "./page/reservation.page.tsx";
+import { CreateReservationPage } from "./page/create.reservation.page.tsx";
+import { ManageReservationPage } from "./page/manage.reservation.page.tsx";
+
 function App() {
     const [isAuthenticated] = useState<boolean>(() => {
         return useAuthStore.getState().authData?.accessToken != null;
@@ -25,19 +29,11 @@ function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/login" element={<LoginPage />} />
 
-                {/* Route publique pour voir les menus */}
+                {/* Routes publiques */}
                 <Route path="/menus" element={<MenuPage />} />
                 <Route path="/restaurants/:id" element={<ViewRestaurantPage />} />
 
-                {/* Routes protégées */}
-                <Route
-                    path="/create_restaurant"
-                    element={
-                        <ProtectedRoute isAuthenticated={isAuthenticated}>
-                            <CreateRestaurantPage />
-                        </ProtectedRoute>
-                    }
-                />
+                {/* Routes protégées - Gestion générale */}
                 <Route
                     path="/dashboard"
                     element={
@@ -46,6 +42,18 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Routes protégées - Restaurants */}
+                <Route
+                    path="/create_restaurant"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <CreateRestaurantPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Routes protégées - Plats */}
                 <Route
                     path="/create-dish"
                     element={
@@ -54,6 +62,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Routes protégées - Commandes */}
                 <Route
                     path="/create-order"
                     element={
@@ -63,7 +73,33 @@ function App() {
                     }
                 />
 
-        </Routes>
+                {/* Routes protégées - Réservations */}
+                <Route
+                    path="/reservations"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ReservationPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/create-reservation"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <CreateReservationPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/manage-reservations"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ManageReservationPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+            </Routes>
             <Toaster position="top-right" />
         </>
     );
