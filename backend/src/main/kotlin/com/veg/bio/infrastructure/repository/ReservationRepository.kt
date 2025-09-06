@@ -12,19 +12,14 @@ import java.util.*
 @Repository
 interface ReservationRepository : JpaRepository<ReservationEntity, UUID> {
 
-    // Réservations d'un client spécifique
     fun findByCustomerIdOrderByCreatedAtDesc(customerId: UUID): List<ReservationEntity>
 
-    // Réservations d'un restaurant spécifique
     fun findByRestaurantIdOrderByCreatedAtDesc(restaurantId: UUID): List<ReservationEntity>
 
-    // Toutes les réservations (pour admin/owner)
     fun findAllByOrderByCreatedAtDesc(): List<ReservationEntity>
 
-    // Réservations par statut
     fun findByStatusOrderByCreatedAtDesc(status: ReservationStatus): List<ReservationEntity>
 
-    // Conflits de réservation (existantes)
     @Query("""
         SELECT r FROM ReservationEntity r 
         WHERE r.restaurant.id = :restaurantId 

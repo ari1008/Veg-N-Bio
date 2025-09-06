@@ -43,12 +43,16 @@ export interface Customer {
 }
 
 export const createReservationSchema = z.object({
-    customerId: z.string().uuid("ID client invalide"),
-    restaurantId: z.string().uuid("ID restaurant invalide"),
-    meetingRoomId: z.string().uuid("ID salle invalide").optional(),
+    customerId: z.uuid("ID client invalide"),
+    restaurantId: z.uuid("ID restaurant invalide"),
+    meetingRoomId: z.union([
+        z.uuid("ID salle invalide"),
+        z.literal(""),
+        z.undefined()
+    ]).optional(),
     type: z.enum(['RESTAURANT_FULL', 'MEETING_ROOM']),
-    startTime: z.string().datetime("Date de début invalide"),
-    endTime: z.string().datetime("Date de fin invalide"),
+    startTime: z.string().min(1, "Date de début requise"),
+    endTime: z.string().min(1, "Date de fin requise"),
     numberOfPeople: z.number()
         .int("Le nombre de personnes doit être un entier")
         .min(1, "Au moins 1 personne")
@@ -63,7 +67,7 @@ export const createReservationSchema = z.object({
 ).refine(
     (data) => {
         if (data.type === 'MEETING_ROOM') {
-            return data.meetingRoomId !== undefined;
+            return data.meetingRoomId !== undefined && data.meetingRoomId !== "";
         }
         return true;
     },

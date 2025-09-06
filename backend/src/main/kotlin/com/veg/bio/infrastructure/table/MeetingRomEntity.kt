@@ -29,5 +29,5 @@ data class MeetingRomEntity(
     val numberMettingPlace: NumberMettingPlace,
 
     @Column(name = "is_reservable", nullable = false)
-    val isReservable: Boolean
+    val isReservable: Boolean,
 )

@@ -22,7 +22,6 @@ class ReservationService(
 ) {
 
     fun createReservation(request: CreateReservationDto, ownerClientId: String): Reservation {
-        // 1. Vérifier que celui qui fait la demande est un restaurant owner
         val owner = userRepository.findByClientId(ownerClientId)
             ?: throw CustomerNotFoundException("Utilisateur non trouvé")
 
@@ -30,31 +29,23 @@ class ReservationService(
             throw UnauthorizedReservationAccessException("Seuls les propriétaires de restaurant peuvent créer des réservations")
         }
 
-        // 2. Récupérer le client pour qui on fait la réservation
         val customer = userRepository.findById(request.customerId)
             .orElseThrow { CustomerNotFoundException("Client non trouvé") }
 
-        // 3. Vérifier que le restaurant existe et appartient au owner (optionnel selon votre logique métier)
         val restaurant = restaurantRepository.findById(request.restaurantId)
             .orElseThrow { RestaurantNotFoundException() }
 
-        // TODO: Ajouter validation que le restaurant appartient à cet owner si nécessaire
-        // validateRestaurantOwnership(restaurant, owner)
 
-        // 4. Validation des horaires d'ouverture
         validateOpeningHours(restaurant, request.startTime, request.endTime)
 
-        // 5. Validation des conflits
         validateAvailability(request)
 
-        // 6. Validation de la capacité
         val meetingRoom = validateCapacityAndGetRoom(restaurant, request)
 
-        // 7. Calcul du prix
         val totalPrice = calculatePrice(request, restaurant, meetingRoom)
 
         val reservationEntity = ReservationEntity(
-            customer = customer,  // Client pour qui on réserve
+            customer = customer,
             restaurant = restaurant,
             meetingRoom = meetingRoom,
             type = request.type,
@@ -71,7 +62,6 @@ class ReservationService(
 
     @Transactional(readOnly = true)
     fun getRestaurantReservations(ownerClientId: String, restaurantId: UUID? = null): List<Reservation> {
-        // Vérifier que c'est un restaurant owner
         val owner = userRepository.findByClientId(ownerClientId)
             ?: throw CustomerNotFoundException("Utilisateur non trouvé")
 
@@ -80,13 +70,10 @@ class ReservationService(
         }
 
         return if (restaurantId != null) {
-            // Réservations d'un restaurant spécifique
-            // TODO: Vérifier que ce restaurant appartient à cet owner
             reservationRepository.findByRestaurantIdOrderByCreatedAtDesc(restaurantId)
                 .map { ReservationMapper.toDomain(it) }
         } else {
-            // Toutes les réservations de tous les restaurants de cet owner
-            // TODO: Implémenter selon votre modèle de données
+
             reservationRepository.findAllByOrderByCreatedAtDesc()
                 .map { ReservationMapper.toDomain(it) }
         }
@@ -94,13 +81,11 @@ class ReservationService(
 
     @Transactional(readOnly = true)
     fun getCustomerReservations(customerId: UUID): List<Reservation> {
-        // Récupérer les réservations d'un client spécifique
         return reservationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId)
             .map { ReservationMapper.toDomain(it) }
     }
 
     fun updateReservationStatus(reservationId: UUID, newStatus: ReservationStatus, ownerClientId: String): Reservation {
-        // Vérifier que c'est un restaurant owner
         val owner = userRepository.findByClientId(ownerClientId)
             ?: throw CustomerNotFoundException("Utilisateur non trouvé")
 
@@ -111,9 +96,6 @@ class ReservationService(
         val reservation = reservationRepository.findById(reservationId)
             .orElseThrow { ReservationNotFoundException() }
 
-        // TODO: Vérifier que ce restaurant appartient à cet owner
-
-        // Validation des transitions de statut
         validateStatusTransition(reservation.status, newStatus)
 
         val updatedReservation = reservation.copy(status = newStatus)
@@ -129,8 +111,8 @@ class ReservationService(
         val validTransitions = mapOf(
             ReservationStatus.PENDING to listOf(ReservationStatus.CONFIRMED, ReservationStatus.CANCELLED),
             ReservationStatus.CONFIRMED to listOf(ReservationStatus.COMPLETED, ReservationStatus.CANCELLED),
-            ReservationStatus.CANCELLED to emptyList(), // État final
-            ReservationStatus.COMPLETED to emptyList()  // État final
+            ReservationStatus.CANCELLED to emptyList(),
+            ReservationStatus.COMPLETED to emptyList()
         )
 
         if (newStatus !in validTransitions[currentStatus].orEmpty()) {
@@ -140,7 +122,6 @@ class ReservationService(
         }
     }
 
-    // Méthodes privées conservées identiques...
     private fun validateOpeningHours(restaurant: RestaurantEntity, startTime: LocalDateTime, endTime: LocalDateTime) {
         val dayOfWeek = startTime.dayOfWeek
         val startHour = startTime.toLocalTime()

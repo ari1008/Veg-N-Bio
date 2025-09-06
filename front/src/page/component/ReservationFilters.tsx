@@ -11,6 +11,32 @@ interface ReservationFiltersProps {
 }
 
 export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters, setFilters }) => {
+    // Fonction pour gérer les changements de filtres de manière sécurisée
+    const handleFilterChange = (key: string, value: string) => {
+        setFilters({
+            ...filters,
+            [key]: value || (key.includes('Date') ? '' : undefined)
+        });
+    };
+
+    // Fonction pour valider une date avant affichage
+    const formatDateForDisplay = (dateString: string): string => {
+        if (!dateString || dateString.trim() === '') {
+            return '';
+        }
+
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return '';
+            }
+            return dateString;
+        } catch (error) {
+            console.error('Erreur de formatage de date:', error);
+            return '';
+        }
+    };
+
     return (
         <div className="card bg-base-100 shadow-xl mb-6">
             <div className="card-body">
@@ -23,7 +49,7 @@ export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters,
                         <select
                             className="select select-bordered"
                             value={filters.status || ''}
-                            onChange={(e) => setFilters({...filters, status: e.target.value || undefined as any})}
+                            onChange={(e) => handleFilterChange('status', e.target.value)}
                         >
                             <option value="">Tous</option>
                             <option value="PENDING">En attente</option>
@@ -40,7 +66,7 @@ export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters,
                         <select
                             className="select select-bordered"
                             value={filters.type || ''}
-                            onChange={(e) => setFilters({...filters, type: e.target.value || undefined as any})}
+                            onChange={(e) => handleFilterChange('type', e.target.value)}
                         >
                             <option value="">Tous</option>
                             <option value="RESTAURANT_FULL">Restaurant complet</option>
@@ -55,8 +81,8 @@ export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters,
                         <input
                             type="date"
                             className="input input-bordered"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters({...filters, startDate: e.target.value})}
+                            value={formatDateForDisplay(filters.startDate)}
+                            onChange={(e) => handleFilterChange('startDate', e.target.value)}
                         />
                     </div>
 
@@ -67,8 +93,9 @@ export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters,
                         <input
                             type="date"
                             className="input input-bordered"
-                            value={filters.endDate}
-                            onChange={(e) => setFilters({...filters, endDate: e.target.value})}
+                            value={formatDateForDisplay(filters.endDate)}
+                            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                            min={filters.startDate || undefined} // Empêche de sélectionner une date antérieure
                         />
                     </div>
                 </div>
@@ -76,11 +103,44 @@ export const ReservationFilters: React.FC<ReservationFiltersProps> = ({ filters,
                 <div className="card-actions justify-end">
                     <button
                         className="btn btn-ghost"
-                        onClick={() => setFilters({ status: undefined, type: undefined, startDate: '', endDate: '' })}
+                        onClick={() => setFilters({
+                            status: undefined,
+                            type: undefined,
+                            startDate: '',
+                            endDate: ''
+                        })}
                     >
                         Réinitialiser
                     </button>
                 </div>
+
+                {/* Indicateur des filtres actifs */}
+                {(filters.status || filters.type || filters.startDate || filters.endDate) && (
+                    <div className="mt-4">
+                        <div className="flex flex-wrap gap-2">
+                            {filters.status && (
+                                <div className="badge badge-primary badge-outline">
+                                    Statut: {filters.status}
+                                </div>
+                            )}
+                            {filters.type && (
+                                <div className="badge badge-secondary badge-outline">
+                                    Type: {filters.type === 'RESTAURANT_FULL' ? 'Restaurant' : 'Salle'}
+                                </div>
+                            )}
+                            {filters.startDate && (
+                                <div className="badge badge-accent badge-outline">
+                                    Depuis: {formatDateForDisplay(filters.startDate)}
+                                </div>
+                            )}
+                            {filters.endDate && (
+                                <div className="badge badge-accent badge-outline">
+                                    Jusqu'au: {formatDateForDisplay(filters.endDate)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -48,7 +48,7 @@ object MapperRestaurant {
                 MeetingRomEntity(
                     name = it.name,
                     numberMettingPlace = it.numberMettingPlace,
-                    isReservable = it.isReservable
+                    isReservable = it.isReservable,
                 )
             }.toList(),
             numberPrinter = restaurant.numberPrinter

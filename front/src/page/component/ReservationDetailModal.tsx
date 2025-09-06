@@ -8,6 +8,86 @@ interface ReservationDetailModalProps {
     onClose: () => void;
 }
 
+const arrayToDate = (dateArray: number[] | string | Date): Date | null => {
+    if (!dateArray) return null;
+
+    if (typeof dateArray === 'string' || dateArray instanceof Date) {
+        try {
+            const date = new Date(dateArray);
+            return isNaN(date.getTime()) ? null : date;
+        } catch {
+            return null;
+        }
+    }
+
+    if (Array.isArray(dateArray) && dateArray.length >= 3) {
+        try {
+            const [year, month, day, hour = 0, minute = 0] = dateArray;
+            const date = new Date(year, month - 1, day, hour, minute);
+            return isNaN(date.getTime()) ? null : date;
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+};
+
+const formatFullDate = (dateValue: number[] | string | Date): string => {
+    const date = arrayToDate(dateValue);
+    if (!date) return 'Date invalide';
+
+    try {
+        return date.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch {
+        return 'Date invalide';
+    }
+};
+
+const formatTime = (dateValue: number[] | string | Date): string => {
+    const date = arrayToDate(dateValue);
+    if (!date) return '--:--';
+
+    try {
+        return date.toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return '--:--';
+    }
+};
+
+const formatShortDate = (dateValue: number[] | string | Date): string => {
+    const date = arrayToDate(dateValue);
+    if (!date) return 'Date invalide';
+
+    try {
+        return date.toLocaleDateString('fr-FR');
+    } catch {
+        return 'Date invalide';
+    }
+};
+
+const calculateDurationMinutes = (startTime: number[] | string | Date, endTime: number[] | string | Date): number => {
+    const startDate = arrayToDate(startTime);
+    const endDate = arrayToDate(endTime);
+
+    if (!startDate || !endDate) return 0;
+
+    try {
+        const diffMs = endDate.getTime() - startDate.getTime();
+        return Math.round(diffMs / (1000 * 60));
+    } catch {
+        return 0;
+    }
+};
+
 export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                                                                                   reservation,
                                                                                   onClose
@@ -79,7 +159,7 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                             <div className="space-y-2">
                                 <div>
                                     <span className="font-medium text-base-content/80">Nom:</span>
-                                    <p className="text-lg font-semibold">{reservation.restaurantName}</p>
+                                    <p className="text-lg font-semibold">{reservation.restaurantName || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <span className="font-medium text-base-content/80">Type de réservation:</span>
@@ -102,7 +182,7 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                             <h4 className="font-semibold text-lg mb-3 text-primary">Client</h4>
                             <div>
                                 <span className="font-medium text-base-content/80">Nom:</span>
-                                <p className="text-lg font-semibold">{reservation.customerName}</p>
+                                <p className="text-lg font-semibold">{reservation.customerName || 'N/A'}</p>
                             </div>
                         </div>
                     </div>
@@ -115,30 +195,19 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                                 <div>
                                     <span className="font-medium text-base-content/80">Date:</span>
                                     <p className="text-lg font-semibold">
-                                        {new Date(reservation.startTime).toLocaleDateString('fr-FR', {
-                                            weekday: 'long',
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
+                                        {formatFullDate(reservation.startTime)}
                                     </p>
                                 </div>
                                 <div>
                                     <span className="font-medium text-base-content/80">Heure:</span>
                                     <p className="text-lg font-semibold">
-                                        {new Date(reservation.startTime).toLocaleTimeString('fr-FR', {
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                        })} - {new Date(reservation.endTime).toLocaleTimeString('fr-FR', {
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
+                                        {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
                                     </p>
                                 </div>
                                 <div>
                                     <span className="font-medium text-base-content/80">Durée:</span>
                                     <p className="font-semibold">
-                                        {Math.round((new Date(reservation.endTime).getTime() - new Date(reservation.startTime).getTime()) / (1000 * 60))} minutes
+                                        {calculateDurationMinutes(reservation.startTime, reservation.endTime)} minutes
                                     </p>
                                 </div>
                             </div>
@@ -149,7 +218,7 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                             <div className="space-y-2">
                                 <div>
                                     <span className="font-medium text-base-content/80">Nombre de personnes:</span>
-                                    <p className="text-lg font-semibold">{reservation.numberOfPeople}</p>
+                                    <p className="text-lg font-semibold">{reservation.numberOfPeople || 'N/A'}</p>
                                 </div>
                                 {reservation.totalPrice && (
                                     <div>
@@ -170,9 +239,11 @@ export const ReservationDetailModal: React.FC<ReservationDetailModalProps> = ({
                             <div className={`badge ${getStatusColor(reservation.status)} badge-lg`}>
                                 {getStatusText(reservation.status)}
                             </div>
-                            <span className="text-sm text-base-content/70">
-                                Créée le {new Date(reservation.createdAt).toLocaleDateString('fr-FR')} à {new Date(reservation.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+                            {reservation.createdAt && (
+                                <span className="text-sm text-base-content/70">
+                                    Créée le {formatShortDate(reservation.createdAt)} à {formatTime(reservation.createdAt)}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -5,6 +5,7 @@ import type {
     RestaurantAvailability,
     UpdateReservationStatusRequest
 } from "./dto/dto.ts";
+import api from "../api.ts";
 
 
 const reservationPath = "/reservations";
@@ -63,7 +64,7 @@ export const getCustomerReservations = async (customerId: string): Promise<Reser
 
 export const getRestaurantAvailability = async (restaurantId: string): Promise<RestaurantAvailability> => {
     try {
-        const response = await apiPrivate.get(`${reservationPath}/availability/${restaurantId}`);
+        const response = await api.get(`/notprotected/restaurant/availability/${restaurantId}`);
         return response.data;
     } catch (err: any) {
         console.error(

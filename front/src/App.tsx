@@ -12,10 +12,9 @@ import { DashboardPage } from "./page/dashboard.page.tsx";
 import MenuPage from "./page/menu.page.tsx";
 import CreateDishPage from "./page/create.dish.page.tsx";
 import KioskOrderPage from "./page/kiosk.order.page.tsx";
-
-import ReservationPage from "./page/reservation.page.tsx";
 import { CreateReservationPage } from "./page/create.reservation.page.tsx";
 import { ManageReservationPage } from "./page/manage.reservation.page.tsx";
+import ReservationPage from "./page/reservation.page.tsx";
 
 function App() {
     const [isAuthenticated] = useState<boolean>(() => {
@@ -73,7 +72,7 @@ function App() {
                     }
                 />
 
-                {/* Routes protégées - Réservations */}
+
                 <Route
                     path="/reservations"
                     element={

@@ -1,18 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import Navbar from './component/navbar.tsx';
 import Footer from './component/footer.tsx';
+import { useGetAllRestaurant } from '../api/restaurant/hook/useRestaurant.ts';
 import {
     useRestaurantReservations,
     useUpdateReservationStatus,
     useCancelReservation
 } from '../api/reservation/hook/hook.ts';
 
+const arrayToDate = (dateArray: number[] | string | Date): Date | null => {
+    if (!dateArray) return null;
+
+    if (typeof dateArray === 'string' || dateArray instanceof Date) {
+        try {
+            const date = new Date(dateArray);
+            return isNaN(date.getTime()) ? null : date;
+        } catch {
+            return null;
+        }
+    }
+
+    if (Array.isArray(dateArray) && dateArray.length >= 3) {
+        try {
+            const [year, month, day, hour = 0, minute = 0] = dateArray;
+            const date = new Date(year, month - 1, day, hour, minute);
+            return isNaN(date.getTime()) ? null : date;
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+};
+
+const formatDate = (dateValue: number[] | string | Date): string => {
+    const date = arrayToDate(dateValue);
+    if (!date) return 'Date invalide';
+
+    try {
+        return date.toLocaleDateString('fr-FR');
+    } catch (error) {
+        console.error('Erreur lors du formatage de date:', error, dateValue);
+        return 'Date invalide';
+    }
+};
+
+const formatTime = (dateValue: number[] | string | Date): string => {
+    const date = arrayToDate(dateValue);
+    if (!date) return '--:--';
+
+    try {
+        return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+        console.error('Erreur lors du formatage de l\'heure:', error, dateValue);
+        return '--:--';
+    }
+};
+
 export const ManageReservationPage: React.FC = () => {
     const [selectedRestaurant, setSelectedRestaurant] = useState('');
+
+    const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
+
     const { data: restaurantReservations, isLoading } = useRestaurantReservations(selectedRestaurant);
     const updateStatusMutation = useUpdateReservationStatus();
     const cancelMutation = useCancelReservation();
+
+    useEffect(() => {
+        loadRestaurants();
+    }, [loadRestaurants]);
 
     const handleStatusUpdate = async (reservationId: string, status: string) => {
         try {
@@ -53,16 +110,32 @@ export const ManageReservationPage: React.FC = () => {
                 <div className="card bg-base-100 shadow-xl mb-6">
                     <div className="card-body">
                         <h2 className="card-title">Sélectionner un restaurant</h2>
-                        <select
-                            className="select select-bordered w-full max-w-md"
-                            value={selectedRestaurant}
-                            onChange={(e) => setSelectedRestaurant(e.target.value)}
-                        >
-                            <option value="">Choisir un restaurant</option>
-                            {/* Remplacez par vos vraies données */}
-                            <option value="restaurant-1">Restaurant Exemple 1</option>
-                            <option value="restaurant-2">Restaurant Exemple 2</option>
-                        </select>
+
+                        {loadingRestaurants ? (
+                            <div className="flex items-center gap-2">
+                                <span className="loading loading-spinner loading-sm"></span>
+                                <span>Chargement des restaurants...</span>
+                            </div>
+                        ) : (
+                            <select
+                                className="select select-bordered w-full max-w-md"
+                                value={selectedRestaurant}
+                                onChange={(e) => setSelectedRestaurant(e.target.value)}
+                            >
+                                <option value="">Choisir un restaurant</option>
+                                {restaurants.map((restaurant) => (
+                                    <option key={restaurant.id} value={restaurant.id}>
+                                        {restaurant.name} - {restaurant.address.city}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+
+                        {restaurants.length === 0 && !loadingRestaurants && (
+                            <div className="text-base-content/70">
+                                Aucun restaurant disponible.
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -70,7 +143,14 @@ export const ManageReservationPage: React.FC = () => {
                 {selectedRestaurant && (
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
-                            <h2 className="card-title">Réservations du restaurant</h2>
+                            <h2 className="card-title">
+                                Réservations du restaurant
+                                {restaurants.find(r => r.id === selectedRestaurant) && (
+                                    <span className="text-sm font-normal text-base-content/70">
+                                        - {restaurants.find(r => r.id === selectedRestaurant)?.name}
+                                    </span>
+                                )}
+                            </h2>
 
                             {isLoading ? (
                                 <div className="flex justify-center py-8">
@@ -93,13 +173,12 @@ export const ManageReservationPage: React.FC = () => {
                                         <tbody>
                                         {restaurantReservations.map((reservation) => (
                                             <tr key={reservation.id}>
-                                                <td>{reservation.customerName}</td>
-                                                <td>{new Date(reservation.startTime).toLocaleDateString('fr-FR')}</td>
+                                                <td>{reservation.customerName || 'N/A'}</td>
+                                                <td>{formatDate(reservation.startTime)}</td>
                                                 <td>
-                                                    {new Date(reservation.startTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} -
-                                                    {new Date(reservation.endTime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                    {formatTime(reservation.startTime)} - {formatTime(reservation.endTime)}
                                                 </td>
-                                                <td>{reservation.numberOfPeople}</td>
+                                                <td>{reservation.numberOfPeople || 'N/A'}</td>
                                                 <td>
                                                     <div className={`badge ${reservation.type === 'RESTAURANT_FULL' ? 'badge-primary' : 'badge-secondary'}`}>
                                                         {reservation.type === 'RESTAURANT_FULL' ? 'Restaurant' : 'Salle'}
@@ -124,7 +203,11 @@ export const ManageReservationPage: React.FC = () => {
                                                         onClick={() => handleCancel(reservation.id)}
                                                         disabled={cancelMutation.isPending || reservation.status === 'CANCELLED'}
                                                     >
-                                                        Annuler
+                                                        {cancelMutation.isPending ? (
+                                                            <span className="loading loading-spinner loading-xs"></span>
+                                                        ) : (
+                                                            'Annuler'
+                                                        )}
                                                     </button>
                                                 </td>
                                             </tr>

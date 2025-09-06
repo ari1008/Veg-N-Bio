@@ -16,14 +16,12 @@ import {
     cancelReservation
 } from "../reservation.ts";
 
-// Hook pour créer une réservation
 export const useCreateReservation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: (data: CreateReservationRequest) => createReservation(data),
         onSuccess: () => {
-            // Invalider les queries liées aux réservations après création
             queryClient.invalidateQueries({ queryKey: ["reservations"] });
         },
         onError: (error) => {
@@ -32,45 +30,43 @@ export const useCreateReservation = () => {
     });
 };
 
-// Hook pour obtenir toutes les réservations d'un restaurant
 export const useRestaurantReservations = (restaurantId: string): UseQueryResult<Reservation[], Error> =>
     useQuery({
         queryKey: ["reservations", "restaurant", restaurantId],
         queryFn: () => getRestaurantReservations(restaurantId),
         enabled: !!restaurantId,
-        staleTime: 30000, // 30 secondes
-        refetchInterval: 60000, // Refresh toutes les minutes
+        staleTime: 30000,
+        refetchInterval: 60000,
     });
 
-// Hook pour obtenir toutes mes réservations
 export const useMyReservations = (): UseQueryResult<Reservation[], Error> =>
     useQuery({
         queryKey: ["reservations", "my"],
         queryFn: getAllMyReservations,
-        staleTime: 30000, // 30 secondes
+        staleTime: 30000,
         refetchOnWindowFocus: true,
     });
 
-// Hook pour obtenir les réservations d'un client
+
 export const useCustomerReservations = (customerId: string): UseQueryResult<Reservation[], Error> =>
     useQuery({
         queryKey: ["reservations", "customer", customerId],
         queryFn: () => getCustomerReservations(customerId),
         enabled: !!customerId,
-        staleTime: 30000, // 30 secondes
+        staleTime: 30000,
     });
 
-// Hook pour obtenir la disponibilité d'un restaurant
+
 export const useRestaurantAvailability = (restaurantId: string): UseQueryResult<RestaurantAvailability, Error> =>
     useQuery({
         queryKey: ["availability", "restaurant", restaurantId],
         queryFn: () => getRestaurantAvailability(restaurantId),
         enabled: !!restaurantId,
-        staleTime: 60000, // 1 minute
-        refetchInterval: 120000, // Refresh toutes les 2 minutes
+        staleTime: 60000,
+        refetchInterval: 120000,
     });
 
-// Hook pour mettre à jour le statut d'une réservation
+
 export const useUpdateReservationStatus = () => {
     const queryClient = useQueryClient();
 
@@ -78,11 +74,10 @@ export const useUpdateReservationStatus = () => {
         mutationFn: ({ reservationId, payload }: { reservationId: string; payload: UpdateReservationStatusRequest }) =>
             updateReservationStatus(reservationId, payload),
         onSuccess: (updatedReservation) => {
-            // Invalider et mettre à jour les caches
+
             queryClient.invalidateQueries({ queryKey: ["reservations"] });
             queryClient.invalidateQueries({ queryKey: ["availability"] });
 
-            // Optionnel : mettre à jour directement le cache avec la nouvelle réservation
             queryClient.setQueryData(
                 ["reservation", updatedReservation.id],
                 updatedReservation
@@ -94,18 +89,15 @@ export const useUpdateReservationStatus = () => {
     });
 };
 
-// Hook pour annuler une réservation
 export const useCancelReservation = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: (reservationId: string) => cancelReservation(reservationId),
         onSuccess: (cancelledReservation) => {
-            // Invalider les queries liées aux réservations
             queryClient.invalidateQueries({ queryKey: ["reservations"] });
             queryClient.invalidateQueries({ queryKey: ["availability"] });
 
-            // Optionnel : mettre à jour directement le cache
             queryClient.setQueryData(
                 ["reservation", cancelledReservation.id],
                 cancelledReservation
@@ -117,19 +109,53 @@ export const useCancelReservation = () => {
     });
 };
 
-// Hook pour obtenir une réservation spécifique (si vous avez besoin)
 export const useReservationById = (reservationId: string): UseQueryResult<Reservation, Error> =>
     useQuery({
         queryKey: ["reservation", reservationId],
         queryFn: () => {
-            // Vous pourriez avoir besoin d'ajouter cette fonction à votre API
-            // Pour l'instant, on peut utiliser une des fonctions existantes
             throw new Error("getReservationById not implemented");
         },
         enabled: !!reservationId,
     });
 
-// Hook personnalisé pour la gestion des réservations avec recherche/filtrage
+const arrayDateToYMD = (dateArray: number[] | string | Date): string | null => {
+    if (!dateArray) return null;
+
+    // Si c'est déjà une chaîne, l'utiliser directement
+    if (typeof dateArray === 'string') {
+        return dateArray;
+    }
+
+    // Si c'est un objet Date
+    if (dateArray instanceof Date) {
+        try {
+            return isNaN(dateArray.getTime()) ? null : dateArray.toISOString().split('T')[0];
+        } catch {
+            return null;
+        }
+    }
+
+    // Si c'est un tableau [année, mois, jour, heure, minute]
+    if (Array.isArray(dateArray) && dateArray.length >= 3) {
+        try {
+            const [year, month, day] = dateArray;
+            // Formater en YYYY-MM-DD
+            const formattedMonth = month.toString().padStart(2, '0');
+            const formattedDay = day.toString().padStart(2, '0');
+            return `${year}-${formattedMonth}-${formattedDay}`;
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+};
+
+// Fonction utilitaire pour convertir une date en format YYYY-MM-DD de manière sécurisée
+const safeDateToYMD = (dateValue: number[] | string | Date): string | null => {
+    return arrayDateToYMD(dateValue);
+};
+
 export const useReservationManager = (filters: {
     status?: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
     startDate?: string;
@@ -138,18 +164,17 @@ export const useReservationManager = (filters: {
 } = {}) => {
     const { data: myReservations, isLoading } = useMyReservations();
 
-    // Filtrer les réservations si nécessaire
     const filteredReservations = myReservations?.filter(reservation => {
         if (filters.status && reservation.status !== filters.status) return false;
 
         if (filters.startDate) {
-            const reservationDate = new Date(reservation.startTime).toISOString().split('T')[0];
-            if (reservationDate < filters.startDate) return false;
+            const reservationDate = safeDateToYMD(reservation.startTime);
+            if (!reservationDate || reservationDate < filters.startDate) return false;
         }
 
         if (filters.endDate) {
-            const reservationDate = new Date(reservation.startTime).toISOString().split('T')[0];
-            if (reservationDate > filters.endDate) return false;
+            const reservationDate = safeDateToYMD(reservation.startTime);
+            if (!reservationDate || reservationDate > filters.endDate) return false;
         }
 
         if (filters.type && reservation.type !== filters.type) return false;

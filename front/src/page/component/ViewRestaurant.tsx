@@ -1,6 +1,24 @@
 import { useParams, Link } from "react-router-dom";
 import { useRestaurantById } from "../../api/restaurant/hook/useRestaurant.ts";
 
+const formatTime = (timeArray: [number, number]) => {
+    const [hours, minutes] = timeArray;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
+const translateDay = (day: string) => {
+    const translations = {
+        'MONDAY': 'Lundi',
+        'TUESDAY': 'Mardi',
+        'WEDNESDAY': 'Mercredi',
+        'THURSDAY': 'Jeudi',
+        'FRIDAY': 'Vendredi',
+        'SATURDAY': 'Samedi',
+        'SUNDAY': 'Dimanche'
+    };
+    return translations[day as keyof typeof translations] || day;
+};
+
 export default function ViewRestaurant() {
     const { id } = useParams();
     const { data: restaurant, isLoading, isError } = useRestaurantById(id!);
@@ -30,8 +48,8 @@ export default function ViewRestaurant() {
                         <div className="flex flex-wrap gap-2">
                             {restaurant.restaurantFeatures.map((feature) => (
                                 <span key={feature} className="badge badge-outline badge-sm">
-                  {feature.replaceAll("_", " ")}
-                </span>
+                                    {feature.replaceAll("_", " ")}
+                                </span>
                             ))}
                         </div>
                     )}
@@ -41,7 +59,7 @@ export default function ViewRestaurant() {
                         <ul className="space-y-1">
                             {Object.entries(restaurant.availability.openingHours).map(([day, time]) => (
                                 <li key={day}>
-                                    <strong>{day}</strong> : {time.start} → {time.end}
+                                    <strong>{translateDay(day)}</strong> : {formatTime(time.start)} → {formatTime(time.end)}
                                 </li>
                             ))}
                         </ul>

@@ -33,6 +33,9 @@ export default function Navbar() {
                     </>
                 ) : (
                     <>
+                        <Link to="/reservations" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
+                            📅 Mes Réservations
+                        </Link>
                         <Link to="/dashboard" className="btn btn-primary btn-sm text-white hover:bg-primary-focus">
                             📊 Dashboard
                         </Link>
