@@ -15,6 +15,9 @@ import KioskOrderPage from "./page/kiosk.order.page.tsx";
 import { CreateReservationPage } from "./page/create.reservation.page.tsx";
 import { ManageReservationPage } from "./page/manage.reservation.page.tsx";
 import ReservationPage from "./page/reservation.page.tsx";
+import EventRequestsPage from "./page/event-requests.page.tsx";
+import {CreateEventRequestPage} from "./page/create.event-request.page.tsx";
+import {ManageEventRequestsPage} from "./page/manage.event-requests.page.tsx";
 
 function App() {
     const [isAuthenticated] = useState<boolean>(() => {
@@ -97,6 +100,31 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/event-requests"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <EventRequestsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/create-event-request"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <CreateEventRequestPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/manage-event-requests"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ManageEventRequestsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
 
             </Routes>
             <Toaster position="top-right" />
