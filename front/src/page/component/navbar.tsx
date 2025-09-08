@@ -40,8 +40,8 @@ export default function Navbar() {
                             📊 Dashboard
                         </Link>
                         <LogoutButton/>
-                        <Link to="/profile" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
-                            Profil
+                        <Link to="/event-requests" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
+                            🎭 Événements
                         </Link>
                     </>
                 )}

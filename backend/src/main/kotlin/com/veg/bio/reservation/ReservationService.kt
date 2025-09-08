@@ -1,5 +1,6 @@
 package com.veg.bio.reservation
 
+import com.veg.bio.infrastructure.repository.EventRequestRepository
 import com.veg.bio.infrastructure.repository.ReservationRepository
 import com.veg.bio.infrastructure.repository.RestaurantRepository
 import com.veg.bio.infrastructure.repository.UserRepository
@@ -18,7 +19,8 @@ import java.util.*
 class ReservationService(
     private val reservationRepository: ReservationRepository,
     private val restaurantRepository: RestaurantRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val eventRequestRepository: EventRequestRepository
 ) {
 
     fun createReservation(request: CreateReservationDto, ownerClientId: String): Reservation {
@@ -34,7 +36,6 @@ class ReservationService(
 
         val restaurant = restaurantRepository.findById(request.restaurantId)
             .orElseThrow { RestaurantNotFoundException() }
-
 
         validateOpeningHours(restaurant, request.startTime, request.endTime)
 
@@ -137,7 +138,46 @@ class ReservationService(
         }
     }
 
+    private fun validateCapacityAndGetRoom(
+        restaurant: RestaurantEntity,
+        request: CreateReservationDto
+    ): MeetingRomEntity? {
+        return when (request.type) {
+            ReservationType.RESTAURANT_FULL -> {
+                if (request.numberOfPeople > restaurant.numberOfPlace.value) {
+                    throw InsufficientCapacityException(
+                        "Le restaurant peut accueillir maximum ${restaurant.numberOfPlace.value} personnes"
+                    )
+                }
+                null
+            }
+
+            ReservationType.MEETING_ROOM -> {
+                val meetingRoom = restaurant.meetingRoms.find { it.id == request.meetingRoomId }
+                    ?: throw MeetingRoomNotFoundException()
+
+                if (!meetingRoom.isReservable) {
+                    throw IllegalStateException("Cette salle n'est pas réservable")
+                }
+
+                if (request.numberOfPeople > meetingRoom.numberMettingPlace.value) {
+                    throw InsufficientCapacityException(
+                        "Cette salle peut accueillir maximum ${meetingRoom.numberMettingPlace.value} personnes"
+                    )
+                }
+
+                meetingRoom
+            }
+        }
+    }
+
     private fun validateAvailability(request: CreateReservationDto) {
+        checkReservationConflicts(request)
+
+        checkEventConflicts(request)
+    }
+
+    private fun checkReservationConflicts(request: CreateReservationDto) {
         when (request.type) {
             ReservationType.RESTAURANT_FULL -> {
                 val conflicts = reservationRepository.findConflictingFullRestaurantReservations(
@@ -173,35 +213,40 @@ class ReservationService(
         }
     }
 
-    private fun validateCapacityAndGetRoom(
-        restaurant: RestaurantEntity,
-        request: CreateReservationDto
-    ): MeetingRomEntity? {
-        return when (request.type) {
+    private fun checkEventConflicts(request: CreateReservationDto) {
+        when (request.type) {
             ReservationType.RESTAURANT_FULL -> {
-                if (request.numberOfPeople > restaurant.numberOfPlace.value) {
-                    throw InsufficientCapacityException(
-                        "Le restaurant peut accueillir maximum ${restaurant.numberOfPlace.value} personnes"
-                    )
+                val eventConflicts = eventRequestRepository.findConflictingRestaurantEvents(
+                    request.restaurantId, request.startTime, request.endTime
+                )
+                if (eventConflicts.isNotEmpty()) {
+                    throw ReservationConflictException("Un événement est déjà prévu dans ce restaurant sur ce créneau")
                 }
-                null
+
+                val roomEventConflicts = eventRequestRepository.findConflictingEventRequestsForRestaurant(
+                    request.restaurantId, request.startTime, request.endTime
+                )
+                if (roomEventConflicts.isNotEmpty()) {
+                    throw ReservationConflictException("Des événements sont prévus dans des salles sur ce créneau")
+                }
             }
 
             ReservationType.MEETING_ROOM -> {
-                val meetingRoom = restaurant.meetingRoms.find { it.id == request.meetingRoomId }
-                    ?: throw MeetingRoomNotFoundException()
-
-                if (!meetingRoom.isReservable) {
-                    throw IllegalStateException("Cette salle n'est pas réservable")
+                val fullRestaurantEvents = eventRequestRepository.findConflictingRestaurantEvents(
+                    request.restaurantId, request.startTime, request.endTime
+                )
+                if (fullRestaurantEvents.isNotEmpty()) {
+                    throw ReservationConflictException("Un événement pour tout le restaurant est prévu sur ce créneau")
                 }
 
-                if (request.numberOfPeople > meetingRoom.numberMettingPlace.value) {
-                    throw InsufficientCapacityException(
-                        "Cette salle peut accueillir maximum ${meetingRoom.numberMettingPlace.value} personnes"
+                if (request.meetingRoomId != null) {
+                    val roomEventConflicts = eventRequestRepository.findConflictingEventRequests(
+                        request.meetingRoomId, request.startTime, request.endTime
                     )
+                    if (roomEventConflicts.isNotEmpty()) {
+                        throw ReservationConflictException("Un événement est déjà prévu dans cette salle sur ce créneau")
+                    }
                 }
-
-                meetingRoom
             }
         }
     }
