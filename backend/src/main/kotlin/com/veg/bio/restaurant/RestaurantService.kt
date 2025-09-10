@@ -21,6 +21,7 @@ class RestaurantService(
     fun saveRestaurant(restaurant: Restaurant) {
         checkIfTheNameExist(restaurant.name)
         verifyIsNameSameForMeetingRooms(restaurant.meetingRooms)
+        verificationGoodAvailability(restaurant.availability)
 
         val restaurantEntity = MapperRestaurant.toEntity(restaurant)
         restaurantRepository.save(restaurantEntity)
@@ -106,5 +107,12 @@ class RestaurantService(
             .filter { it.value > 1 }.isNotEmpty()
         if (verifyNameOfRoom) throw RestaurantHasMeetingRoomSameName()
 
+    }
+
+
+    private fun verificationGoodAvailability(availability: Availability){
+        availability.openingHours.forEach {
+            if (it.value.start > it.value.end) throw NotGoodAvailability()
+        }
     }
 }

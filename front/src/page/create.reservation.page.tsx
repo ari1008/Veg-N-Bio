@@ -127,7 +127,7 @@ const DateTimeInput = ({ label, error, value, onChange, min, placeholder }) => {
                         value={date}
                         onChange={handleDateChange}
                         min={minDate}
-                        className="input input-bordered w-full"
+                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
                     />
                 </div>
 
@@ -139,7 +139,7 @@ const DateTimeInput = ({ label, error, value, onChange, min, placeholder }) => {
                         type="time"
                         value={time}
                         onChange={handleTimeChange}
-                        className="input input-bordered w-full"
+                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
                     />
                 </div>
             </div>
@@ -224,6 +224,51 @@ const DurationSuggestions = ({ startTime, onDurationSelect }) => {
     );
 };
 
+// Fonction pour extraire les messages d'erreur détaillés
+const extractErrorMessage = (error: any): string => {
+    // Si c'est une erreur de réponse HTTP avec détails
+    if (error?.response?.data) {
+        const errorData = error.response.data;
+
+        // Si c'est un objet d'erreur structuré
+        if (errorData.message) {
+            return errorData.message;
+        }
+
+        // Si c'est un objet avec des erreurs de validation détaillées
+        if (errorData.errors && typeof errorData.errors === 'object') {
+            const errorMessages = Object.values(errorData.errors).join(', ');
+            return `Erreurs de validation: ${errorMessages}`;
+        }
+
+        // Si c'est un string direct
+        if (typeof errorData === 'string') {
+            return errorData;
+        }
+    }
+
+    // Messages d'erreur spécifiques connus
+    const errorMessage = error?.message || error?.toString() || '';
+
+    if (errorMessage.includes('InsufficientCapacityException')) {
+        return 'La capacité du restaurant/salle est insuffisante pour le nombre de personnes demandé';
+    }
+    if (errorMessage.includes('ReservationConflictException')) {
+        return 'Il y a un conflit avec une autre réservation pour cette période';
+    }
+    if (errorMessage.includes('InvalidReservationTimeException')) {
+        return 'Les horaires de réservation ne sont pas valides';
+    }
+    if (errorMessage.includes('RestaurantClosedException')) {
+        return 'Le restaurant est fermé à cette période';
+    }
+    if (errorMessage.includes('UnauthorizedReservationAccessException')) {
+        return "Vous n'êtes pas autorisé à effectuer cette réservation";
+    }
+
+    return 'Erreur lors de la création de la réservation. Veuillez vérifier les informations saisies.';
+};
+
 export const CreateReservationPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedRestaurant, setSelectedRestaurant] = useState('');
@@ -252,9 +297,13 @@ export const CreateReservationPage: React.FC = () => {
         handleSubmit,
         watch,
         setValue,
-        formState: { errors, isSubmitting }
+        setError,
+        clearErrors,
+        trigger,
+        formState: { errors, isSubmitting, isValid }
     } = useForm<CreateReservationRequest>({
         resolver: zodResolver(createReservationSchema),
+        mode: 'onChange', // Validation en temps réel
         defaultValues: {
             type: 'RESTAURANT_FULL',
             numberOfPeople: 1
@@ -264,6 +313,10 @@ export const CreateReservationPage: React.FC = () => {
     const watchedType = watch('type');
     const watchedStartTime = watch('startTime');
     const watchedEndTime = watch('endTime');
+    const watchedCustomerId = watch('customerId');
+    const watchedRestaurantId = watch('restaurantId');
+    const watchedMeetingRoomId = watch('meetingRoomId');
+    const watchedNumberOfPeople = watch('numberOfPeople');
 
     useEffect(() => {
         if (watchedStartTime) setStartTime(watchedStartTime);
@@ -275,36 +328,111 @@ export const CreateReservationPage: React.FC = () => {
 
     useEffect(() => {
         setValue('meetingRoomId', '');
-    }, [selectedRestaurant, setValue]);
+        clearErrors('meetingRoomId');
+    }, [selectedRestaurant, setValue, clearErrors]);
+
+    // Validation en temps réel des champs liés
+    useEffect(() => {
+        if (watchedStartTime && watchedEndTime) {
+            trigger(['startTime', 'endTime']);
+        }
+    }, [watchedStartTime, watchedEndTime, trigger]);
+
+    useEffect(() => {
+        if (watchedType === 'MEETING_ROOM' && watchedMeetingRoomId) {
+            trigger('meetingRoomId');
+        }
+    }, [watchedType, watchedMeetingRoomId, trigger]);
+
+    // Validation de la capacité
+    useEffect(() => {
+        if (watchedNumberOfPeople && selectedRestaurantData) {
+            const maxCapacity = watchedType === 'MEETING_ROOM' && watchedMeetingRoomId
+                ? meetingRooms.find(room => room.id === watchedMeetingRoomId)?.numberMettingPlace || 0
+                : selectedRestaurantData.numberPlace;
+
+            if (watchedNumberOfPeople > maxCapacity) {
+                setError('numberOfPeople', {
+                    type: 'manual',
+                    message: `La capacité maximale est de ${maxCapacity} personnes`
+                });
+            } else {
+                clearErrors('numberOfPeople');
+            }
+        }
+    }, [watchedNumberOfPeople, watchedType, watchedMeetingRoomId, selectedRestaurantData, meetingRooms, setError, clearErrors]);
 
     const onSubmit = async (data: CreateReservationRequest) => {
-        // Nettoyer les données avant envoi
-        const cleanData = {
-            ...data,
-            // S'assurer que customerId est soit un UUID valide soit undefined
-            customerId: data.customerId === '' ? undefined : data.customerId,
-            // S'assurer que meetingRoomId est soit un UUID valide soit undefined
-            meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
-            // Convertir les dates au format ISO si nécessaire
-            startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
-            endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
-        };
-
-        console.log('Données nettoyées à envoyer:', cleanData);
-
         try {
+            // Validation supplémentaire côté client
+            if (!data.customerId || data.customerId === '') {
+                setError('customerId', {
+                    type: 'manual',
+                    message: 'Veuillez sélectionner un client'
+                });
+                return;
+            }
+
+            if (!data.restaurantId || data.restaurantId === '') {
+                setError('restaurantId', {
+                    type: 'manual',
+                    message: 'Veuillez sélectionner un restaurant'
+                });
+                return;
+            }
+
+            if (data.type === 'MEETING_ROOM' && (!data.meetingRoomId || data.meetingRoomId === '')) {
+                setError('meetingRoomId', {
+                    type: 'manual',
+                    message: 'Veuillez sélectionner une salle de réunion'
+                });
+                return;
+            }
+
+            // Nettoyer les données avant envoi
+            const cleanData = {
+                ...data,
+                customerId: data.customerId === '' ? undefined : data.customerId,
+                meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
+                startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
+                endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
+            };
+
+            console.log('Données nettoyées à envoyer:', cleanData);
+
             await createMutation.mutateAsync(cleanData);
             toast.success('Réservation créée avec succès !');
             navigate('/reservations');
         } catch (error) {
             console.error('Erreur lors de la création:', error);
-            toast.error('Erreur lors de la création de la réservation');
+            const errorMessage = extractErrorMessage(error);
+            toast.error(errorMessage);
+
+            // Gestion spécifique des erreurs de validation côté serveur
+            if (error?.response?.status === 400 && error?.response?.data?.errors) {
+                const serverErrors = error.response.data.errors;
+                Object.entries(serverErrors).forEach(([field, message]) => {
+                    setError(field as keyof CreateReservationRequest, {
+                        type: 'server',
+                        message: message as string
+                    });
+                });
+            }
         }
     };
 
     const roomsToDisplay = watchedType === 'MEETING_ROOM' && startTime && endTime
         ? availableMeetingRooms
         : meetingRooms;
+
+    // Vérification si le formulaire peut être soumis
+    const canSubmit = !isSubmitting &&
+        !createMutation.isPending &&
+        watchedCustomerId &&
+        watchedRestaurantId &&
+        watchedStartTime &&
+        watchedEndTime &&
+        (watchedType !== 'MEETING_ROOM' || watchedMeetingRoomId);
 
     return (
         <div data-theme="vegnbio" className="min-h-screen bg-base-100">
@@ -321,7 +449,14 @@ export const CreateReservationPage: React.FC = () => {
 
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+                                {/* Messages d'erreur global */}
+                                {createMutation.isError && (
+                                    <div className="alert alert-error">
+                                        <span>{extractErrorMessage(createMutation.error)}</span>
+                                    </div>
+                                )}
+
                                 {/* Type de réservation */}
                                 <FormField label="Type de réservation" error={errors.type?.message}>
                                     <div className="flex gap-4">
@@ -347,7 +482,7 @@ export const CreateReservationPage: React.FC = () => {
                                 </FormField>
 
                                 {/* Restaurant */}
-                                <FormField label="Restaurant" error={errors.restaurantId?.message}>
+                                <FormField label="Restaurant *" error={errors.restaurantId?.message}>
                                     {loadingRestaurants ? (
                                         <div className="flex items-center justify-center p-4">
                                             <span className="loading loading-spinner loading-md"></span>
@@ -356,8 +491,12 @@ export const CreateReservationPage: React.FC = () => {
                                     ) : (
                                         <select
                                             {...register('restaurantId')}
-                                            className="select select-bordered w-full"
-                                            onChange={(e) => setSelectedRestaurant(e.target.value)}
+                                            className={`select select-bordered w-full ${errors.restaurantId ? 'select-error' : ''}`}
+                                            onChange={(e) => {
+                                                register('restaurantId').onChange(e);
+                                                setSelectedRestaurant(e.target.value);
+                                                clearErrors('restaurantId');
+                                            }}
                                         >
                                             <option value="">Sélectionnez un restaurant</option>
                                             {restaurants.map((restaurant) => (
@@ -372,22 +511,31 @@ export const CreateReservationPage: React.FC = () => {
                                 {/* Dates et heures améliorées */}
                                 <div className="space-y-4">
                                     <DateTimeInput
-                                        label="Date et heure de début"
+                                        label="Date et heure de début *"
                                         value={watchedStartTime}
-                                        onChange={(value) => setValue('startTime', value)}
+                                        onChange={(value) => {
+                                            setValue('startTime', value);
+                                            clearErrors('startTime');
+                                        }}
                                         min={new Date().toISOString().slice(0, 16)}
                                         error={errors.startTime?.message}
                                     />
 
                                     <DurationSuggestions
                                         startTime={watchedStartTime}
-                                        onDurationSelect={(endTime) => setValue('endTime', endTime)}
+                                        onDurationSelect={(endTime) => {
+                                            setValue('endTime', endTime);
+                                            clearErrors('endTime');
+                                        }}
                                     />
 
                                     <DateTimeInput
-                                        label="Date et heure de fin"
+                                        label="Date et heure de fin *"
                                         value={watchedEndTime}
-                                        onChange={(value) => setValue('endTime', value)}
+                                        onChange={(value) => {
+                                            setValue('endTime', value);
+                                            clearErrors('endTime');
+                                        }}
                                         min={watchedStartTime}
                                         error={errors.endTime?.message}
                                     />
@@ -423,7 +571,7 @@ export const CreateReservationPage: React.FC = () => {
 
                                 {/* Salle de réunion (conditionnel) */}
                                 {watchedType === 'MEETING_ROOM' && selectedRestaurant && (
-                                    <FormField label="Salle de réunion" error={errors.meetingRoomId?.message}>
+                                    <FormField label="Salle de réunion *" error={errors.meetingRoomId?.message}>
                                         {loadingMeetingRooms || loadingAvailability ? (
                                             <div className="flex items-center justify-center p-4">
                                                 <span className="loading loading-spinner loading-md"></span>
@@ -435,7 +583,7 @@ export const CreateReservationPage: React.FC = () => {
                                             <>
                                                 <select
                                                     {...register('meetingRoomId')}
-                                                    className="select select-bordered w-full"
+                                                    className={`select select-bordered w-full ${errors.meetingRoomId ? 'select-error' : ''}`}
                                                 >
                                                     <option value="">Sélectionnez une salle</option>
                                                     {roomsToDisplay.map((room) => (
@@ -484,18 +632,26 @@ export const CreateReservationPage: React.FC = () => {
                                 )}
 
                                 {/* Nombre de personnes */}
-                                <FormField label="Nombre de personnes" error={errors.numberOfPeople?.message}>
+                                <FormField label="Nombre de personnes *" error={errors.numberOfPeople?.message}>
                                     <input
                                         type="number"
                                         min="1"
                                         max="200"
                                         {...register('numberOfPeople', { valueAsNumber: true })}
-                                        className="input input-bordered w-full"
+                                        className={`input input-bordered w-full ${errors.numberOfPeople ? 'input-error' : ''}`}
+                                        onBlur={() => trigger('numberOfPeople')}
                                     />
+                                    {selectedRestaurantData && (
+                                        <div className="text-sm text-base-content/70 mt-1">
+                                            Capacité maximale: {watchedType === 'MEETING_ROOM' && watchedMeetingRoomId
+                                            ? meetingRooms.find(room => room.id === watchedMeetingRoomId)?.numberMettingPlace || 0
+                                            : selectedRestaurantData.numberPlace} personnes
+                                        </div>
+                                    )}
                                 </FormField>
 
                                 {/* Client */}
-                                <FormField label="Client" error={errors.customerId?.message}>
+                                <FormField label="Client *" error={errors.customerId?.message}>
                                     {loadingUsers ? (
                                         <div className="flex items-center justify-center p-4">
                                             <span className="loading loading-spinner loading-md"></span>
@@ -504,7 +660,7 @@ export const CreateReservationPage: React.FC = () => {
                                     ) : (
                                         <select
                                             {...register('customerId')}
-                                            className="select select-bordered w-full"
+                                            className={`select select-bordered w-full ${errors.customerId ? 'select-error' : ''}`}
                                         >
                                             <option value="">Sélectionnez un client</option>
                                             {users.map((user) => (
@@ -520,10 +676,14 @@ export const CreateReservationPage: React.FC = () => {
                                 <FormField label="Notes (optionnel)" error={errors.notes?.message}>
                                     <textarea
                                         {...register('notes')}
-                                        className="textarea textarea-bordered w-full"
+                                        className={`textarea textarea-bordered w-full ${errors.notes ? 'textarea-error' : ''}`}
                                         placeholder="Remarques particulières, allergies, demandes spéciales..."
                                         rows={3}
+                                        maxLength={1000}
                                     />
+                                    <div className="text-sm text-base-content/50 mt-1">
+                                        {watch('notes')?.length || 0}/1000 caractères
+                                    </div>
                                 </FormField>
 
                                 {/* Informations sur le restaurant sélectionné */}
@@ -578,23 +738,111 @@ export const CreateReservationPage: React.FC = () => {
                                     </div>
                                 )}
 
+                                {/* Indicateur de progression de validation */}
+                                <div className="bg-base-200 p-4 rounded-lg">
+                                    <h4 className="font-semibold mb-2">État du formulaire</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedCustomerId}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedCustomerId ? 'text-success' : 'text-base-content/60'}`}>
+                                                Client sélectionné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedRestaurantId}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedRestaurantId ? 'text-success' : 'text-base-content/60'}`}>
+                                                Restaurant sélectionné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedStartTime && !!watchedEndTime}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedStartTime && watchedEndTime ? 'text-success' : 'text-base-content/60'}`}>
+                                                Dates et heures définies
+                                            </span>
+                                        </div>
+                                        {watchedType === 'MEETING_ROOM' && (
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="checkbox checkbox-xs"
+                                                    checked={!!watchedMeetingRoomId}
+                                                    readOnly
+                                                />
+                                                <span className={`text-sm ${watchedMeetingRoomId ? 'text-success' : 'text-base-content/60'}`}>
+                                                    Salle de réunion sélectionnée
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedNumberOfPeople && watchedNumberOfPeople > 0}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedNumberOfPeople > 0 ? 'text-success' : 'text-base-content/60'}`}>
+                                                Nombre de personnes défini
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {!canSubmit && (
+                                        <div className="mt-3 text-sm text-warning">
+                                            <span className="font-medium">Attention:</span> Veuillez compléter tous les champs obligatoires (*) pour pouvoir créer la réservation.
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Actions */}
                                 <div className="card-actions justify-end pt-4">
                                     <button
                                         type="button"
                                         className="btn btn-ghost"
                                         onClick={() => navigate('/reservations')}
+                                        disabled={isSubmitting || createMutation.isPending}
                                     >
                                         Annuler
                                     </button>
                                     <button
                                         type="submit"
-                                        className={`btn btn-primary ${isSubmitting || createMutation.isPending ? 'loading' : ''}`}
-                                        disabled={isSubmitting || createMutation.isPending}
+                                        className={`btn btn-primary ${(isSubmitting || createMutation.isPending) ? 'loading' : ''}`}
+                                        disabled={!canSubmit}
                                     >
-                                        {isSubmitting || createMutation.isPending ? 'Création...' : 'Créer la réservation'}
+                                        {isSubmitting || createMutation.isPending ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Création...
+                                            </>
+                                        ) : (
+                                            'Créer la réservation'
+                                        )}
                                     </button>
                                 </div>
+
+                                {/* Debug des erreurs (à retirer en production) */}
+                                {Object.keys(errors).length > 0 && process.env.NODE_ENV === 'development' && (
+                                    <div className="bg-error/10 p-4 rounded-lg">
+                                        <h4 className="font-semibold text-error mb-2">Erreurs de validation (Debug)</h4>
+                                        <pre className="text-xs overflow-auto">
+                                            {JSON.stringify(errors, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     </div>

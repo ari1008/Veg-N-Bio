@@ -188,6 +188,7 @@ const EventDateTimeInput = ({ label, error, value, onChange, min, placeholder })
     );
 };
 
+
 // Composant pour suggérer une durée d'événement
 const EventDurationSuggestions = ({ startTime, onDurationSelect }) => {
     if (!startTime) return null;
@@ -226,6 +227,51 @@ const EventDurationSuggestions = ({ startTime, onDurationSelect }) => {
     );
 };
 
+// Fonction pour extraire les messages d'erreur détaillés
+const extractEventErrorMessage = (error: any): string => {
+    // Si c'est une erreur de réponse HTTP avec détails
+    if (error?.response?.data) {
+        const errorData = error.response.data;
+
+        // Si c'est un objet d'erreur structuré
+        if (errorData.message) {
+            return errorData.message;
+        }
+
+        // Si c'est un objet avec des erreurs de validation détaillées
+        if (errorData.errors && typeof errorData.errors === 'object') {
+            const errorMessages = Object.values(errorData.errors).join(', ');
+            return `Erreurs de validation: ${errorMessages}`;
+        }
+
+        // Si c'est un string direct
+        if (typeof errorData === 'string') {
+            return errorData;
+        }
+    }
+
+    // Messages d'erreur spécifiques connus pour les événements
+    const errorMessage = error?.message || error?.toString() || '';
+
+    if (errorMessage.includes('EventConflictException')) {
+        return 'Il y a un conflit avec un autre événement pour cette période';
+    }
+    if (errorMessage.includes('InvalidEventTimeException')) {
+        return 'Les horaires de l\'événement ne sont pas valides';
+    }
+    if (errorMessage.includes('RestaurantUnavailableException')) {
+        return 'Le restaurant n\'est pas disponible pour cette période';
+    }
+    if (errorMessage.includes('InsufficientCapacityException')) {
+        return 'La capacité est insuffisante pour le nombre de participants demandé';
+    }
+    if (errorMessage.includes('UnauthorizedEventAccessException')) {
+        return "Vous n'êtes pas autorisé à créer cet événement";
+    }
+
+    return 'Erreur lors de la création de la demande d\'événement. Veuillez vérifier les informations saisies.';
+};
+
 export const CreateEventRequestPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedRestaurant, setSelectedRestaurant] = useState('');
@@ -250,9 +296,13 @@ export const CreateEventRequestPage: React.FC = () => {
         handleSubmit,
         watch,
         setValue,
-        formState: { errors, isSubmitting }
+        setError,
+        clearErrors,
+        trigger,
+        formState: { errors, isSubmitting, isValid }
     } = useForm<CreateEventRequestRequest>({
         resolver: zodResolver(createEventRequestSchema),
+        mode: 'onChange', // Validation en temps réel
         defaultValues: {
             numberOfPeople: 1,
             type: 'AUTRE'
@@ -266,8 +316,15 @@ export const CreateEventRequestPage: React.FC = () => {
 
     // Surveiller les changements
     const watchedType = watch('type');
+    const watchedTitle = watch('title');
     const watchedStartTime = watch('startTime');
     const watchedEndTime = watch('endTime');
+    const watchedCustomerId = watch('customerId');
+    const watchedRestaurantId = watch('restaurantId');
+    const watchedMeetingRoomId = watch('meetingRoomId');
+    const watchedNumberOfPeople = watch('numberOfPeople');
+    const watchedDescription = watch('description');
+    const watchedSpecialRequests = watch('specialRequests');
 
     // Mettre à jour les états locaux quand les valeurs changent
     useEffect(() => {
@@ -282,27 +339,101 @@ export const CreateEventRequestPage: React.FC = () => {
         }
     }, [watchedEndTime]);
 
+    // Validation en temps réel des champs liés
+    useEffect(() => {
+        if (watchedStartTime && watchedEndTime) {
+            trigger(['startTime', 'endTime']);
+        }
+    }, [watchedStartTime, watchedEndTime, trigger]);
+
     // Données du restaurant sélectionné
     const selectedRestaurantData = restaurants.find(r => r.id === selectedRestaurant);
 
+    // Validation de la capacité
+    useEffect(() => {
+        if (watchedNumberOfPeople && selectedRestaurantData) {
+            const maxCapacity = watchedMeetingRoomId
+                ? meetingRooms.find(room => room.id === watchedMeetingRoomId)?.numberMettingPlace || 0
+                : selectedRestaurantData.numberPlace;
+
+            if (watchedNumberOfPeople > maxCapacity) {
+                setError('numberOfPeople', {
+                    type: 'manual',
+                    message: `La capacité maximale est de ${maxCapacity} personnes`
+                });
+            } else {
+                clearErrors('numberOfPeople');
+            }
+        }
+    }, [watchedNumberOfPeople, watchedMeetingRoomId, selectedRestaurantData, meetingRooms, setError, clearErrors]);
+
     const onSubmit = async (data: CreateEventRequestRequest) => {
-        // Nettoyer les données comme pour les réservations
-        const cleanData = {
-            ...data,
-            meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
-            startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
-            endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
-        };
-
-        console.log('Données de demande d\'événement à envoyer:', cleanData);
-
         try {
+            // Validation supplémentaire côté client
+            if (!data.title || data.title.trim() === '') {
+                setError('title', {
+                    type: 'manual',
+                    message: 'Le titre de l\'événement est requis'
+                });
+                return;
+            }
+
+            if (!data.customerId || data.customerId === '') {
+                setError('customerId', {
+                    type: 'manual',
+                    message: 'Veuillez sélectionner un client'
+                });
+                return;
+            }
+
+            if (!data.restaurantId || data.restaurantId === '') {
+                setError('restaurantId', {
+                    type: 'manual',
+                    message: 'Veuillez sélectionner un restaurant'
+                });
+                return;
+            }
+
+            if (!data.description || data.description.trim() === '') {
+                setError('description', {
+                    type: 'manual',
+                    message: 'La description de l\'événement est requise'
+                });
+                return;
+            }
+
+            // Nettoyer les données comme pour les réservations
+            const cleanData = {
+                ...data,
+                title: data.title.trim(),
+                description: data.description.trim(),
+                specialRequests: data.specialRequests?.trim() || undefined,
+                contactPhone: data.contactPhone?.trim() || undefined,
+                meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
+                startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
+                endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
+            };
+
+            console.log('Données de demande d\'événement à envoyer:', cleanData);
+
             await createMutation.mutateAsync(cleanData);
             toast.success('Demande d\'événement créée avec succès !');
             navigate('/event-requests');
         } catch (error) {
             console.error('Erreur lors de la création:', error);
-            toast.error('Erreur lors de la création de la demande d\'événement');
+            const errorMessage = extractEventErrorMessage(error);
+            toast.error(errorMessage);
+
+            // Gestion spécifique des erreurs de validation côté serveur
+            if (error?.response?.status === 400 && error?.response?.data?.errors) {
+                const serverErrors = error.response.data.errors;
+                Object.entries(serverErrors).forEach(([field, message]) => {
+                    setError(field as keyof CreateEventRequestRequest, {
+                        type: 'server',
+                        message: message as string
+                    });
+                });
+            }
         }
     };
 
@@ -311,6 +442,17 @@ export const CreateEventRequestPage: React.FC = () => {
     const roomsToDisplay = needsSpecificRoom && startTime && endTime
         ? availableMeetingRooms
         : meetingRooms;
+
+    // Vérification si le formulaire peut être soumis
+    const canSubmit = !isSubmitting &&
+        !createMutation.isPending &&
+        watchedTitle &&
+        watchedCustomerId &&
+        watchedRestaurantId &&
+        watchedStartTime &&
+        watchedEndTime &&
+        watchedDescription &&
+        watchedNumberOfPeople > 0;
 
     return (
         <div data-theme="vegnbio" className="min-h-screen bg-base-100">
@@ -327,12 +469,19 @@ export const CreateEventRequestPage: React.FC = () => {
 
                     <div className="card bg-base-100 shadow-xl">
                         <div className="card-body">
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+                                {/* Messages d'erreur global */}
+                                {createMutation.isError && (
+                                    <div className="alert alert-error">
+                                        <span>{extractEventErrorMessage(createMutation.error)}</span>
+                                    </div>
+                                )}
+
                                 {/* Type d'événement */}
-                                <FormField label="Type d'événement" error={errors.type?.message}>
+                                <FormField label="Type d'événement *" error={errors.type?.message}>
                                     <select
                                         {...register('type')}
-                                        className="select select-bordered w-full"
+                                        className={`select select-bordered w-full ${errors.type ? 'select-error' : ''}`}
                                     >
                                         {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
                                             <option key={value} value={value}>{label}</option>
@@ -341,17 +490,21 @@ export const CreateEventRequestPage: React.FC = () => {
                                 </FormField>
 
                                 {/* Titre de l'événement */}
-                                <FormField label="Titre de l'événement" error={errors.title?.message}>
+                                <FormField label="Titre de l'événement *" error={errors.title?.message}>
                                     <input
                                         type="text"
                                         {...register('title')}
-                                        className="input input-bordered w-full"
+                                        className={`input input-bordered w-full ${errors.title ? 'input-error' : ''}`}
                                         placeholder="Ex: Anniversaire de Sophie, Conférence Marketing, etc."
+                                        onBlur={() => trigger('title')}
                                     />
+                                    <div className="text-sm text-base-content/50 mt-1">
+                                        {watchedTitle?.length || 0}/100 caractères
+                                    </div>
                                 </FormField>
 
                                 {/* Restaurant */}
-                                <FormField label="Restaurant" error={errors.restaurantId?.message}>
+                                <FormField label="Restaurant *" error={errors.restaurantId?.message}>
                                     {loadingRestaurants ? (
                                         <div className="skeleton h-12 w-full"></div>
                                     ) : (
@@ -362,8 +515,9 @@ export const CreateEventRequestPage: React.FC = () => {
                                                 register('restaurantId').onChange(e);
                                                 // Reset de la salle si on change de restaurant
                                                 setValue('meetingRoomId', '');
+                                                clearErrors('restaurantId');
                                             }}
-                                            className="select select-bordered w-full"
+                                            className={`select select-bordered w-full ${errors.restaurantId ? 'select-error' : ''}`}
                                         >
                                             <option value="">Sélectionner un restaurant</option>
                                             {restaurants.map((restaurant) => (
@@ -376,11 +530,14 @@ export const CreateEventRequestPage: React.FC = () => {
                                 </FormField>
 
                                 {/* Date et heure de début */}
-                                <FormField label="Date et heure de début" error={errors.startTime?.message}>
+                                <FormField label="Date et heure de début *" error={errors.startTime?.message}>
                                     <EventDateTimeInput
                                         label="Début de l'événement"
                                         value={watchedStartTime}
-                                        onChange={(value) => setValue('startTime', value)}
+                                        onChange={(value) => {
+                                            setValue('startTime', value);
+                                            clearErrors('startTime');
+                                        }}
                                         error={errors.startTime?.message}
                                         min={new Date().toISOString()}
                                         placeholder="Date et heure de début"
@@ -391,21 +548,55 @@ export const CreateEventRequestPage: React.FC = () => {
                                 {watchedStartTime && (
                                     <EventDurationSuggestions
                                         startTime={watchedStartTime}
-                                        onDurationSelect={(endTime) => setValue('endTime', endTime)}
+                                        onDurationSelect={(endTime) => {
+                                            setValue('endTime', endTime);
+                                            clearErrors('endTime');
+                                        }}
                                     />
                                 )}
 
                                 {/* Date et heure de fin */}
-                                <FormField label="Date et heure de fin" error={errors.endTime?.message}>
+                                <FormField label="Date et heure de fin *" error={errors.endTime?.message}>
                                     <EventDateTimeInput
                                         label="Fin de l'événement"
                                         value={watchedEndTime}
-                                        onChange={(value) => setValue('endTime', value)}
+                                        onChange={(value) => {
+                                            setValue('endTime', value);
+                                            clearErrors('endTime');
+                                        }}
                                         error={errors.endTime?.message}
                                         min={watchedStartTime}
                                         placeholder="Date et heure de fin"
                                     />
                                 </FormField>
+
+                                {/* Récapitulatif de l'événement */}
+                                {watchedStartTime && watchedEndTime && (
+                                    <div className="alert alert-info">
+                                        <div>
+                                            <h4 className="font-bold">Récapitulatif de l'événement</h4>
+                                            <div className="text-sm">
+                                                <p>Du: {new Date(watchedStartTime).toLocaleDateString('fr-FR', {
+                                                    weekday: 'long',
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}</p>
+                                                <p>Au: {new Date(watchedEndTime).toLocaleDateString('fr-FR', {
+                                                    weekday: 'long',
+                                                    day: 'numeric',
+                                                    month: 'long',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}</p>
+                                                <p className="font-medium">
+                                                    Durée: {Math.round((new Date(watchedEndTime) - new Date(watchedStartTime)) / (1000 * 60 * 60 * 10)) / 10}h
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Salle de réunion (optionnelle) */}
                                 {selectedRestaurant && meetingRooms.length > 0 && (
@@ -416,7 +607,7 @@ export const CreateEventRequestPage: React.FC = () => {
                                             <>
                                                 <select
                                                     {...register('meetingRoomId')}
-                                                    className="select select-bordered w-full"
+                                                    className={`select select-bordered w-full ${errors.meetingRoomId ? 'select-error' : ''}`}
                                                 >
                                                     <option value="">Aucune salle spécifique</option>
                                                     {roomsToDisplay.map((room) => (
@@ -451,24 +642,32 @@ export const CreateEventRequestPage: React.FC = () => {
                                 )}
 
                                 {/* Nombre de participants */}
-                                <FormField label="Nombre de participants" error={errors.numberOfPeople?.message}>
+                                <FormField label="Nombre de participants *" error={errors.numberOfPeople?.message}>
                                     <input
                                         type="number"
                                         min="1"
                                         max="500"
                                         {...register('numberOfPeople', { valueAsNumber: true })}
-                                        className="input input-bordered w-full"
+                                        className={`input input-bordered w-full ${errors.numberOfPeople ? 'input-error' : ''}`}
+                                        onBlur={() => trigger('numberOfPeople')}
                                     />
+                                    {selectedRestaurantData && (
+                                        <div className="text-sm text-base-content/70 mt-1">
+                                            Capacité maximale: {watchedMeetingRoomId
+                                            ? meetingRooms.find(room => room.id === watchedMeetingRoomId)?.numberMettingPlace || 0
+                                            : selectedRestaurantData.numberPlace} personnes
+                                        </div>
+                                    )}
                                 </FormField>
 
                                 {/* Client */}
-                                <FormField label="Client" error={errors.customerId?.message}>
+                                <FormField label="Client *" error={errors.customerId?.message}>
                                     {loadingUsers ? (
                                         <div className="skeleton h-12 w-full"></div>
                                     ) : (
                                         <select
                                             {...register('customerId')}
-                                            className="select select-bordered w-full"
+                                            className={`select select-bordered w-full ${errors.customerId ? 'select-error' : ''}`}
                                         >
                                             <option value="">Sélectionner un client</option>
                                             {users.map((user) => (
@@ -485,29 +684,38 @@ export const CreateEventRequestPage: React.FC = () => {
                                     <input
                                         type="tel"
                                         {...register('contactPhone')}
-                                        className="input input-bordered w-full"
+                                        className={`input input-bordered w-full ${errors.contactPhone ? 'input-error' : ''}`}
                                         placeholder="06 12 34 56 78"
+                                        onBlur={() => trigger('contactPhone')}
                                     />
                                 </FormField>
 
                                 {/* Description */}
-                                <FormField label="Description de l'événement" error={errors.description?.message}>
+                                <FormField label="Description de l'événement *" error={errors.description?.message}>
                                     <textarea
                                         {...register('description')}
-                                        className="textarea textarea-bordered w-full"
+                                        className={`textarea textarea-bordered w-full ${errors.description ? 'textarea-error' : ''}`}
                                         placeholder="Décrivez l'événement, l'ambiance souhaitée, le déroulement prévu..."
                                         rows={4}
+                                        onBlur={() => trigger('description')}
                                     />
+                                    <div className="text-sm text-base-content/50 mt-1">
+                                        {watchedDescription?.length || 0}/1000 caractères
+                                    </div>
                                 </FormField>
 
                                 {/* Demandes spéciales */}
                                 <FormField label="Demandes spéciales (optionnel)" error={errors.specialRequests?.message}>
                                     <textarea
                                         {...register('specialRequests')}
-                                        className="textarea textarea-bordered w-full"
+                                        className={`textarea textarea-bordered w-full ${errors.specialRequests ? 'textarea-error' : ''}`}
                                         placeholder="Décoration, animation, allergies, matériel spécifique, restrictions alimentaires..."
                                         rows={3}
+                                        onBlur={() => trigger('specialRequests')}
                                     />
+                                    <div className="text-sm text-base-content/50 mt-1">
+                                        {watchedSpecialRequests?.length || 0}/500 caractères
+                                    </div>
                                 </FormField>
 
                                 {/* Informations sur le restaurant sélectionné */}
@@ -527,12 +735,31 @@ export const CreateEventRequestPage: React.FC = () => {
                                                 <div className="flex flex-wrap gap-1 mt-1">
                                                     {selectedRestaurantData.restaurantFeatures.map((feature, index) => (
                                                         <span key={index} className="badge badge-outline badge-sm">
-                                                            {feature}
+                                                            {feature.replace('_', ' ')}
                                                         </span>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {/* Messages d'erreur et d'avertissement */}
+                                {restaurants.length === 0 && !loadingRestaurants && (
+                                    <div className="alert alert-warning">
+                                        <span>Aucun restaurant disponible pour le moment.</span>
+                                    </div>
+                                )}
+
+                                {users.length === 0 && !loadingUsers && (
+                                    <div className="alert alert-warning">
+                                        <span>Aucun client disponible pour le moment.</span>
+                                    </div>
+                                )}
+
+                                {selectedRestaurant && meetingRooms.length === 0 && !loadingMeetingRooms && (
+                                    <div className="alert alert-info">
+                                        <span>Ce restaurant n'a pas de salles de réunion configurées.</span>
                                     </div>
                                 )}
 
@@ -543,23 +770,123 @@ export const CreateEventRequestPage: React.FC = () => {
                                     </div>
                                 )}
 
+                                {/* Indicateur de progression de validation */}
+                                <div className="bg-base-200 p-4 rounded-lg">
+                                    <h4 className="font-semibold mb-2">État de la demande</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedType}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedType ? 'text-success' : 'text-base-content/60'}`}>
+                                                Type d'événement sélectionné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedTitle && watchedTitle.trim() !== ''}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedTitle?.trim() ? 'text-success' : 'text-base-content/60'}`}>
+                                                Titre renseigné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedCustomerId}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedCustomerId ? 'text-success' : 'text-base-content/60'}`}>
+                                                Client sélectionné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedRestaurantId}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedRestaurantId ? 'text-success' : 'text-base-content/60'}`}>
+                                                Restaurant sélectionné
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedStartTime && !!watchedEndTime}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedStartTime && watchedEndTime ? 'text-success' : 'text-base-content/60'}`}>
+                                                Dates et heures définies
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedDescription && watchedDescription.trim() !== ''}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedDescription?.trim() ? 'text-success' : 'text-base-content/60'}`}>
+                                                Description renseignée
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-xs"
+                                                checked={!!watchedNumberOfPeople && watchedNumberOfPeople > 0}
+                                                readOnly
+                                            />
+                                            <span className={`text-sm ${watchedNumberOfPeople > 0 ? 'text-success' : 'text-base-content/60'}`}>
+                                                Nombre de participants défini
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {!canSubmit && (
+                                        <div className="mt-3 text-sm text-warning">
+                                            <span className="font-medium">Attention:</span> Veuillez compléter tous les champs obligatoires (*) pour pouvoir créer la demande d'événement.
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Actions */}
                                 <div className="card-actions justify-end pt-4">
                                     <button
                                         type="button"
                                         className="btn btn-ghost"
                                         onClick={() => navigate('/event-requests')}
+                                        disabled={isSubmitting || createMutation.isPending}
                                     >
                                         Annuler
                                     </button>
                                     <button
                                         type="submit"
-                                        className={`btn btn-primary ${isSubmitting || createMutation.isPending ? 'loading' : ''}`}
-                                        disabled={isSubmitting || createMutation.isPending}
+                                        className={`btn btn-primary ${(isSubmitting || createMutation.isPending) ? 'loading' : ''}`}
+                                        disabled={!canSubmit}
                                     >
-                                        {isSubmitting || createMutation.isPending ? 'Création...' : 'Créer la demande'}
+                                        {isSubmitting || createMutation.isPending ? (
+                                            <>
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                                Création...
+                                            </>
+                                        ) : (
+                                            'Créer la demande'
+                                        )}
                                     </button>
                                 </div>
+
+
                             </form>
                         </div>
                     </div>
