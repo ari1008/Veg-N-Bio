@@ -37,7 +37,6 @@ export const updateEventRequestStatus = async (
     return response.data;
 };
 
-// Annuler une demande d'événement
 export const cancelEventRequest = async (id: string): Promise<EventRequest> => {
     const response = await apiPrivate.delete<EventRequest>(`${EVENT_REQUEST_BASE_URL}/${id}`);
     return response.data;

@@ -25,13 +25,24 @@ spring:
         jakarta.persistence.converter.auto_apply: true
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.time_zone: Europe/Paris
+  jackson:
+    time-zone: Europe/Paris
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    adjust-dates-to-context-time-zone: false
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: false
 
 server:
-  port:  ${SPRING_PORT}
+  port: ${SPRING_PORT}
+  servlet:
+    context-parameters:
+      user.timezone: Europe/Paris
 
 frontend:
   url: ${FRONT_URL}
-
 
 keycloak:
   server-url: ${KEYCLOAK_URL}

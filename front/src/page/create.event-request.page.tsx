@@ -12,184 +12,9 @@ import { useMeetingRoomsByRestaurant, useAvailableMeetingRooms } from '../api/me
 import {useCreateEventRequest} from "../api/event/hook/hook.ts";
 import {type CreateEventRequestRequest, createEventRequestSchema} from "../api/event/dto/dto.ts";
 import {EVENT_TYPE_LABELS} from "../api/event/utils.ts";
-
-// Composant pour la saisie de dates avec raccourcis
-const EventDateTimeInput = ({ label, error, value, onChange, min, placeholder }) => {
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
-
-    // Extraire date et heure du datetime-local
-    useEffect(() => {
-        if (value) {
-            const dateObj = new Date(value);
-            if (!isNaN(dateObj.getTime())) {
-                setDate(dateObj.toISOString().split('T')[0]);
-                setTime(dateObj.toTimeString().slice(0, 5));
-            }
-        }
-    }, [value]);
-
-    // Mettre à jour la valeur combinée
-    const updateDateTime = (newDate, newTime) => {
-        if (newDate && newTime) {
-            const combined = `${newDate}T${newTime}`;
-            onChange(combined);
-        } else {
-            onChange('');
-        }
-    };
-
-    const handleDateChange = (e) => {
-        const newDate = e.target.value;
-        setDate(newDate);
-        updateDateTime(newDate, time);
-    };
-
-    const handleTimeChange = (e) => {
-        const newTime = e.target.value;
-        setTime(newTime);
-        updateDateTime(date, newTime);
-    };
-
-    // Raccourcis de dates pour événements
-    const setToday = () => {
-        const today = new Date().toISOString().split('T')[0];
-        setDate(today);
-        updateDateTime(today, time || '10:00');
-    };
-
-    const setNextWeek = () => {
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const nextWeekStr = nextWeek.toISOString().split('T')[0];
-        setDate(nextWeekStr);
-        updateDateTime(nextWeekStr, time || '10:00');
-    };
-
-    const setNextMonth = () => {
-        const nextMonth = new Date();
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        const nextMonthStr = nextMonth.toISOString().split('T')[0];
-        setDate(nextMonthStr);
-        updateDateTime(nextMonthStr, time || '10:00');
-    };
-
-    // Raccourcis horaires spécifiques aux événements
-    const timePresets = [
-        { label: '9h00', value: '09:00' },
-        { label: '10h00', value: '10:00' },
-        { label: '14h00', value: '14:00' },
-        { label: '15h00', value: '15:00' },
-        { label: '18h00', value: '18:00' },
-        { label: '19h00', value: '19:00' },
-    ];
-
-    const minDate = min ? new Date(min).toISOString().split('T')[0] :
-        new Date().toISOString().split('T')[0];
-
-    return (
-        <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="label">
-                        <span className="label-text">Date</span>
-                    </label>
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={handleDateChange}
-                        min={minDate}
-                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
-                    />
-                </div>
-                <div>
-                    <label className="label">
-                        <span className="label-text">Heure</span>
-                    </label>
-                    <input
-                        type="time"
-                        value={time}
-                        onChange={handleTimeChange}
-                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
-                    />
-                </div>
-            </div>
-
-            {/* Raccourcis de dates */}
-            <div className="bg-base-200 p-3 rounded-lg">
-                <span className="text-sm font-medium text-base-content/70">Raccourcis de dates:</span>
-                <div className="flex flex-wrap gap-2 mt-2">
-                    <button
-                        type="button"
-                        onClick={setToday}
-                        className="btn btn-outline btn-xs"
-                    >
-                        Aujourd'hui
-                    </button>
-                    <button
-                        type="button"
-                        onClick={setNextWeek}
-                        className="btn btn-outline btn-xs"
-                    >
-                        Semaine prochaine
-                    </button>
-                    <button
-                        type="button"
-                        onClick={setNextMonth}
-                        className="btn btn-outline btn-xs"
-                    >
-                        Mois prochain
-                    </button>
-                </div>
-            </div>
-
-            {/* Raccourcis horaires */}
-            {date && (
-                <div className="bg-base-200 p-3 rounded-lg">
-                    <span className="text-sm font-medium text-base-content/70">Heures courantes:</span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                        {timePresets.map((preset) => (
-                            <button
-                                key={preset.value}
-                                type="button"
-                                onClick={() => {
-                                    setTime(preset.value);
-                                    updateDateTime(date, preset.value);
-                                }}
-                                className={`btn btn-outline btn-xs ${time === preset.value ? 'btn-active' : ''}`}
-                            >
-                                {preset.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Affichage de la date/heure combinée */}
-            {date && time && (
-                <div className="text-sm text-base-content/70 mt-2">
-                    <span className="font-medium">Sélectionné:</span> {
-                    new Date(`${date}T${time}`).toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })
-                }
-                </div>
-            )}
-
-            {error && (
-                <div className="text-error text-sm mt-1">{error}</div>
-            )}
-        </div>
-    );
-};
+import {EventDateTimeInput} from "./component/EventDateTimeInput.component.tsx";
 
 
-// Composant pour suggérer une durée d'événement
 const EventDurationSuggestions = ({ startTime, onDurationSelect }) => {
     if (!startTime) return null;
 
@@ -227,30 +52,24 @@ const EventDurationSuggestions = ({ startTime, onDurationSelect }) => {
     );
 };
 
-// Fonction pour extraire les messages d'erreur détaillés
 const extractEventErrorMessage = (error: any): string => {
-    // Si c'est une erreur de réponse HTTP avec détails
     if (error?.response?.data) {
         const errorData = error.response.data;
 
-        // Si c'est un objet d'erreur structuré
         if (errorData.message) {
             return errorData.message;
         }
 
-        // Si c'est un objet avec des erreurs de validation détaillées
         if (errorData.errors && typeof errorData.errors === 'object') {
             const errorMessages = Object.values(errorData.errors).join(', ');
             return `Erreurs de validation: ${errorMessages}`;
         }
 
-        // Si c'est un string direct
         if (typeof errorData === 'string') {
             return errorData;
         }
     }
 
-    // Messages d'erreur spécifiques connus pour les événements
     const errorMessage = error?.message || error?.toString() || '';
 
     if (errorMessage.includes('EventConflictException')) {
@@ -278,12 +97,10 @@ export const CreateEventRequestPage: React.FC = () => {
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
 
-    // Hooks pour récupérer les données
     const createMutation = useCreateEventRequest();
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
     const { data: users = [], isLoading: loadingUsers } = useAllUsers();
 
-    // Salles de réunion
     const { data: meetingRooms = [], isLoading: loadingMeetingRooms } = useMeetingRoomsByRestaurant(selectedRestaurant);
     const { data: availableMeetingRooms = [] } = useAvailableMeetingRooms({
         restaurantId: selectedRestaurant,
@@ -302,19 +119,17 @@ export const CreateEventRequestPage: React.FC = () => {
         formState: { errors, isSubmitting, isValid }
     } = useForm<CreateEventRequestRequest>({
         resolver: zodResolver(createEventRequestSchema),
-        mode: 'onChange', // Validation en temps réel
+        mode: 'onChange',
         defaultValues: {
             numberOfPeople: 1,
             type: 'AUTRE'
         }
     });
 
-    // Charger les restaurants au démarrage
     useEffect(() => {
         loadRestaurants();
     }, [loadRestaurants]);
 
-    // Surveiller les changements
     const watchedType = watch('type');
     const watchedTitle = watch('title');
     const watchedStartTime = watch('startTime');
@@ -326,7 +141,6 @@ export const CreateEventRequestPage: React.FC = () => {
     const watchedDescription = watch('description');
     const watchedSpecialRequests = watch('specialRequests');
 
-    // Mettre à jour les états locaux quand les valeurs changent
     useEffect(() => {
         if (watchedStartTime !== startTime) {
             setStartTime(watchedStartTime || '');
@@ -339,17 +153,14 @@ export const CreateEventRequestPage: React.FC = () => {
         }
     }, [watchedEndTime]);
 
-    // Validation en temps réel des champs liés
     useEffect(() => {
         if (watchedStartTime && watchedEndTime) {
             trigger(['startTime', 'endTime']);
         }
     }, [watchedStartTime, watchedEndTime, trigger]);
 
-    // Données du restaurant sélectionné
     const selectedRestaurantData = restaurants.find(r => r.id === selectedRestaurant);
 
-    // Validation de la capacité
     useEffect(() => {
         if (watchedNumberOfPeople && selectedRestaurantData) {
             const maxCapacity = watchedMeetingRoomId
@@ -369,7 +180,6 @@ export const CreateEventRequestPage: React.FC = () => {
 
     const onSubmit = async (data: CreateEventRequestRequest) => {
         try {
-            // Validation supplémentaire côté client
             if (!data.title || data.title.trim() === '') {
                 setError('title', {
                     type: 'manual',
@@ -402,7 +212,6 @@ export const CreateEventRequestPage: React.FC = () => {
                 return;
             }
 
-            // Nettoyer les données comme pour les réservations
             const cleanData = {
                 ...data,
                 title: data.title.trim(),
@@ -410,8 +219,8 @@ export const CreateEventRequestPage: React.FC = () => {
                 specialRequests: data.specialRequests?.trim() || undefined,
                 contactPhone: data.contactPhone?.trim() || undefined,
                 meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
-                startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
-                endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
+                startTime: data.startTime ? (data.startTime.includes(':00') ? data.startTime : `${data.startTime}:00`) : undefined,
+                endTime: data.endTime ? (data.endTime.includes(':00') ? data.endTime : `${data.endTime}:00`) : undefined
             };
 
             console.log('Données de demande d\'événement à envoyer:', cleanData);
@@ -424,7 +233,6 @@ export const CreateEventRequestPage: React.FC = () => {
             const errorMessage = extractEventErrorMessage(error);
             toast.error(errorMessage);
 
-            // Gestion spécifique des erreurs de validation côté serveur
             if (error?.response?.status === 400 && error?.response?.data?.errors) {
                 const serverErrors = error.response.data.errors;
                 Object.entries(serverErrors).forEach(([field, message]) => {
@@ -437,13 +245,11 @@ export const CreateEventRequestPage: React.FC = () => {
         }
     };
 
-    // Si une salle spécifique est demandée, afficher les salles disponibles
     const needsSpecificRoom = watch('meetingRoomId');
     const roomsToDisplay = needsSpecificRoom && startTime && endTime
         ? availableMeetingRooms
         : meetingRooms;
 
-    // Vérification si le formulaire peut être soumis
     const canSubmit = !isSubmitting &&
         !createMutation.isPending &&
         watchedTitle &&
@@ -513,7 +319,6 @@ export const CreateEventRequestPage: React.FC = () => {
                                             onChange={(e) => {
                                                 setSelectedRestaurant(e.target.value);
                                                 register('restaurantId').onChange(e);
-                                                // Reset de la salle si on change de restaurant
                                                 setValue('meetingRoomId', '');
                                                 clearErrors('restaurantId');
                                             }}

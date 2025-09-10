@@ -11,182 +11,9 @@ import { createReservationSchema } from '../api/reservation/dto/dto.ts';
 import { useCreateReservation, useRestaurantAvailability } from '../api/reservation/hook/hook.ts';
 import { useGetAllRestaurant } from '../api/restaurant/hook/useRestaurant.ts';
 import { useAllUsers } from '../api/auth/hook/hook.ts';
+import {DateTimeInput} from "./component/DateTimeInput.component.tsx";
 
-// Composant pour la saisie de dates améliorée
-const DateTimeInput = ({ label, error, value, onChange, min, placeholder }) => {
-    const [date, setDate] = useState('');
-    const [time, setTime] = useState('');
 
-    // Extraire date et heure du datetime-local
-    useEffect(() => {
-        if (value) {
-            const dateObj = new Date(value);
-            if (!isNaN(dateObj.getTime())) {
-                setDate(dateObj.toISOString().split('T')[0]);
-                setTime(dateObj.toTimeString().slice(0, 5));
-            }
-        }
-    }, [value]);
-
-    // Mettre à jour la valeur combinée
-    const updateDateTime = (newDate, newTime) => {
-        if (newDate && newTime) {
-            const combined = `${newDate}T${newTime}`;
-            onChange(combined);
-        } else {
-            onChange('');
-        }
-    };
-
-    const handleDateChange = (e) => {
-        const newDate = e.target.value;
-        setDate(newDate);
-        updateDateTime(newDate, time);
-    };
-
-    const handleTimeChange = (e) => {
-        const newTime = e.target.value;
-        setTime(newTime);
-        updateDateTime(date, newTime);
-    };
-
-    // Raccourcis pour les dates courantes
-    const setToday = () => {
-        const today = new Date().toISOString().split('T')[0];
-        setDate(today);
-        updateDateTime(today, time || '09:00');
-    };
-
-    const setTomorrow = () => {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        setDate(tomorrowStr);
-        updateDateTime(tomorrowStr, time || '09:00');
-    };
-
-    const setNextWeek = () => {
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        const nextWeekStr = nextWeek.toISOString().split('T')[0];
-        setDate(nextWeekStr);
-        updateDateTime(nextWeekStr, time || '09:00');
-    };
-
-    // Raccourcis pour les heures courantes
-    const timePresets = [
-        { label: '9h00', value: '09:00' },
-        { label: '12h00', value: '12:00' },
-        { label: '14h00', value: '14:00' },
-        { label: '17h00', value: '17:00' },
-        { label: '19h00', value: '19:00' },
-    ];
-
-    const minDate = min ? new Date(min).toISOString().split('T')[0] :
-        new Date().toISOString().split('T')[0];
-
-    return (
-        <div className="space-y-3">
-            <label className="label">
-                <span className="label-text font-medium">{label}</span>
-            </label>
-
-            {/* Raccourcis de dates */}
-            <div className="flex flex-wrap gap-2 mb-3">
-                <button
-                    type="button"
-                    onClick={setToday}
-                    className="btn btn-outline btn-xs"
-                >
-                    Aujourd'hui
-                </button>
-                <button
-                    type="button"
-                    onClick={setTomorrow}
-                    className="btn btn-outline btn-xs"
-                >
-                    Demain
-                </button>
-                <button
-                    type="button"
-                    onClick={setNextWeek}
-                    className="btn btn-outline btn-xs"
-                >
-                    Semaine prochaine
-                </button>
-            </div>
-
-            {/* Saisie de date et heure séparées */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                    <label className="label">
-                        <span className="label-text text-sm">Date</span>
-                    </label>
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={handleDateChange}
-                        min={minDate}
-                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
-                    />
-                </div>
-
-                <div>
-                    <label className="label">
-                        <span className="label-text text-sm">Heure</span>
-                    </label>
-                    <input
-                        type="time"
-                        value={time}
-                        onChange={handleTimeChange}
-                        className={`input input-bordered w-full ${error ? 'input-error' : ''}`}
-                    />
-                </div>
-            </div>
-
-            {/* Raccourcis d'heures */}
-            {date && (
-                <div className="flex flex-wrap gap-2">
-                    {timePresets.map((preset) => (
-                        <button
-                            key={preset.value}
-                            type="button"
-                            onClick={() => {
-                                setTime(preset.value);
-                                updateDateTime(date, preset.value);
-                            }}
-                            className={`btn btn-outline btn-xs ${time === preset.value ? 'btn-active' : ''}`}
-                        >
-                            {preset.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* Affichage de la date/heure combinée */}
-            {date && time && (
-                <div className="text-sm text-base-content/70 mt-2">
-                    <span className="font-medium">Sélectionné:</span> {
-                    new Date(`${date}T${time}`).toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })
-                }
-                </div>
-            )}
-
-            {error && (
-                <div className="text-error text-sm mt-1">{error}</div>
-            )}
-        </div>
-    );
-};
-
-// Composant pour suggérer une durée
 const DurationSuggestions = ({ startTime, onDurationSelect }) => {
     if (!startTime) return null;
 
@@ -224,30 +51,24 @@ const DurationSuggestions = ({ startTime, onDurationSelect }) => {
     );
 };
 
-// Fonction pour extraire les messages d'erreur détaillés
 const extractErrorMessage = (error: any): string => {
-    // Si c'est une erreur de réponse HTTP avec détails
     if (error?.response?.data) {
         const errorData = error.response.data;
 
-        // Si c'est un objet d'erreur structuré
         if (errorData.message) {
             return errorData.message;
         }
 
-        // Si c'est un objet avec des erreurs de validation détaillées
         if (errorData.errors && typeof errorData.errors === 'object') {
             const errorMessages = Object.values(errorData.errors).join(', ');
             return `Erreurs de validation: ${errorMessages}`;
         }
 
-        // Si c'est un string direct
         if (typeof errorData === 'string') {
             return errorData;
         }
     }
 
-    // Messages d'erreur spécifiques connus
     const errorMessage = error?.message || error?.toString() || '';
 
     if (errorMessage.includes('InsufficientCapacityException')) {
@@ -275,13 +96,11 @@ export const CreateReservationPage: React.FC = () => {
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
 
-    // Hooks pour récupérer les données
     const createMutation = useCreateReservation();
     const { data: availability } = useRestaurantAvailability(selectedRestaurant);
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
     const { data: users = [], isLoading: loadingUsers } = useAllUsers();
 
-    // Utilisation temporaire des salles du restaurant
     const selectedRestaurantData = restaurants.find(r => r.id === selectedRestaurant);
     const meetingRooms = selectedRestaurantData?.meetingRooms || [];
     const loadingMeetingRooms = false;
@@ -303,7 +122,7 @@ export const CreateReservationPage: React.FC = () => {
         formState: { errors, isSubmitting, isValid }
     } = useForm<CreateReservationRequest>({
         resolver: zodResolver(createReservationSchema),
-        mode: 'onChange', // Validation en temps réel
+        mode: 'onChange',
         defaultValues: {
             type: 'RESTAURANT_FULL',
             numberOfPeople: 1
@@ -331,7 +150,6 @@ export const CreateReservationPage: React.FC = () => {
         clearErrors('meetingRoomId');
     }, [selectedRestaurant, setValue, clearErrors]);
 
-    // Validation en temps réel des champs liés
     useEffect(() => {
         if (watchedStartTime && watchedEndTime) {
             trigger(['startTime', 'endTime']);
@@ -344,7 +162,6 @@ export const CreateReservationPage: React.FC = () => {
         }
     }, [watchedType, watchedMeetingRoomId, trigger]);
 
-    // Validation de la capacité
     useEffect(() => {
         if (watchedNumberOfPeople && selectedRestaurantData) {
             const maxCapacity = watchedType === 'MEETING_ROOM' && watchedMeetingRoomId
@@ -364,7 +181,6 @@ export const CreateReservationPage: React.FC = () => {
 
     const onSubmit = async (data: CreateReservationRequest) => {
         try {
-            // Validation supplémentaire côté client
             if (!data.customerId || data.customerId === '') {
                 setError('customerId', {
                     type: 'manual',
@@ -389,13 +205,12 @@ export const CreateReservationPage: React.FC = () => {
                 return;
             }
 
-            // Nettoyer les données avant envoi
             const cleanData = {
                 ...data,
                 customerId: data.customerId === '' ? undefined : data.customerId,
                 meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
-                startTime: data.startTime ? new Date(data.startTime).toISOString() : undefined,
-                endTime: data.endTime ? new Date(data.endTime).toISOString() : undefined
+                startTime: data.startTime ? (data.startTime.includes(':00') ? data.startTime : `${data.startTime}:00`) : undefined,
+                endTime: data.endTime ? (data.endTime.includes(':00') ? data.endTime : `${data.endTime}:00`) : undefined
             };
 
             console.log('Données nettoyées à envoyer:', cleanData);
@@ -408,7 +223,6 @@ export const CreateReservationPage: React.FC = () => {
             const errorMessage = extractErrorMessage(error);
             toast.error(errorMessage);
 
-            // Gestion spécifique des erreurs de validation côté serveur
             if (error?.response?.status === 400 && error?.response?.data?.errors) {
                 const serverErrors = error.response.data.errors;
                 Object.entries(serverErrors).forEach(([field, message]) => {
@@ -425,7 +239,6 @@ export const CreateReservationPage: React.FC = () => {
         ? availableMeetingRooms
         : meetingRooms;
 
-    // Vérification si le formulaire peut être soumis
     const canSubmit = !isSubmitting &&
         !createMutation.isPending &&
         watchedCustomerId &&
