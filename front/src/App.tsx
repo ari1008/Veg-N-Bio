@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { useState } from "react";
+import {useEffect, useState} from "react";
 import HomePage from "./page/home.page.tsx";
 import { RegisterPage } from "./page/register.page.tsx";
 import { LoginPage } from "./page/login.page.tsx";
@@ -20,9 +20,19 @@ import {CreateEventRequestPage} from "./page/create.event-request.page.tsx";
 import {ManageEventRequestsPage} from "./page/manage.event-requests.page.tsx";
 
 function App() {
-    const [isAuthenticated] = useState<boolean>(() => {
-        return useAuthStore.getState().authData?.accessToken != null;
-    });
+    const isAuthenticated = useAuthStore((s) => !!s.authData?.accessToken);
+
+    const [hydrated, setHydrated] = useState(false);
+    useEffect(() => {
+        const unsub = useAuthStore.persist?.onFinishHydration?.(() => setHydrated(true));
+        if (useAuthStore.persist?.hasHydrated?.()) setHydrated(true);
+        return () => unsub?.();
+    }, []);
+
+    if (!hydrated) {
+        // petit splash/loader si tu veux
+        return null;
+    }
 
     return (
         <>

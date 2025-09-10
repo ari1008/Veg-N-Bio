@@ -1,33 +1,75 @@
 import React from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { dishSchema, type DishFormData } from "../api/menu/schema/schema.ts";
-import Navbar from "./component/navbar.tsx";
-import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import Navbar from "./component/navbar.tsx";
 import { useCreateDish } from "../api/menu/hook/hook.ts";
 import type { CreateDishRequest } from "../api/menu/dto/dto.ts";
+import { dishSchema, type DishFormData } from "../api/menu/schema/schema.ts";
+
+// --- Validation manuelle, inspirée de RegisterForm ---
+const validateForm = (
+    data: DishFormData
+): { isValid: boolean; errors: Record<string, string> } => {
+    try {
+        dishSchema.parse(data);
+        return { isValid: true, errors: {} };
+    } catch (err) {
+        if (err instanceof z.ZodError) {
+            const errors: Record<string, string> = {};
+            err.issues.forEach((issue) => {
+                const path = issue.path.join(".");
+                errors[path] = issue.message;
+            });
+            return { isValid: false, errors };
+        }
+        return { isValid: false, errors: { root: "Erreur de validation inconnue" } };
+    }
+};
+
+const availableAllergens = [
+    "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
+    "CELERY","MUSTARD","SESAME_SEEDS","SULPHITES","LUPIN","MOLLUSCS"
+] as const;
+
+const allergenLabels: Record<string, string> = {
+    GLUTEN: "Gluten",
+    CRUSTACEANS: "Crustacés",
+    EGGS: "Œufs",
+    FISH: "Poisson",
+    PEANUTS: "Arachides",
+    SOYBEANS: "Soja",
+    MILK: "Lait",
+    NUTS: "Fruits à coque",
+    CELERY: "Céleri",
+    MUSTARD: "Moutarde",
+    SESAME_SEEDS: "Graines de sésame",
+    SULPHITES: "Sulfites",
+    LUPIN: "Lupin",
+    MOLLUSCS: "Mollusques",
+};
+const getAllergenLabel = (a: string) => allergenLabels[a] ?? a;
 
 const CreateDishPage: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
+    const mutation = useCreateDish();
 
     const {
         register,
         handleSubmit,
-        formState: { errors, isSubmitting },
+        formState: { isSubmitting, errors },
         reset,
-        watch,
-        setValue,
         getValues,
-        trigger,
+        setValue,
         setError,
         clearErrors,
+        watch,
     } = useForm<DishFormData>({
-        resolver: zodResolver(dishSchema),
-        mode: "onBlur",
-        reValidateMode: "onBlur",
+        // ⚠️ Pas de resolver : on valide manuellement (submit + blur)
+        mode: "onSubmit",
         defaultValues: {
             name: "",
             description: "",
@@ -38,56 +80,52 @@ const CreateDishPage: React.FC = () => {
         },
     });
 
-    const createDishMutation = useCreateDish();
+    const allergens = watch("allergens") ?? [];
 
-    const availableAllergens = [
-        "GLUTEN","CRUSTACEANS","EGGS","FISH","PEANUTS","SOYBEANS","MILK","NUTS",
-        "CELERY","MUSTARD","SESAME_SEEDS","SULPHITES","LUPIN","MOLLUSCS"
-    ] as const;
-
-    const allergenLabels: Record<string, string> = {
-        GLUTEN: "Gluten",
-        CRUSTACEANS: "Crustacés",
-        EGGS: "Œufs",
-        FISH: "Poisson",
-        PEANUTS: "Arachides",
-        SOYBEANS: "Soja",
-        MILK: "Lait",
-        NUTS: "Fruits à coque",
-        CELERY: "Céleri",
-        MUSTARD: "Moutarde",
-        SESAME_SEEDS: "Graines de sésame",
-        SULPHITES: "Sulfites",
-        LUPIN: "Lupin",
-        MOLLUSCS: "Mollusques",
-    };
-    const getAllergenLabel = (a: string) => allergenLabels[a] ?? a;
-
-    const handleAllergenToggle = (allergen: string) => {
-        const current = getValues("allergens") ?? [];
-        const updated = current.includes(allergen)
-            ? current.filter((x) => x !== allergen)
-            : [...current, allergen];
-        setValue("allergens", updated, { shouldValidate: true });
+    // --- Validation d'un champ spécifique (au blur) ---
+    const validateField = (fieldName: keyof DishFormData) => {
+        const values = getValues();
+        const validation = validateForm(values);
+        if (validation.errors[fieldName as string]) {
+            setError(fieldName, {
+                type: "manual",
+                message: validation.errors[fieldName as string],
+            });
+        } else {
+            clearErrors(fieldName);
+        }
     };
 
-    const validateField = async (field: keyof DishFormData) => {
-        const ok = await trigger(field);
-        if (ok) clearErrors(field);
+    // --- Toggle allergènes et validation du champ "allergens" ---
+    const toggleAllergen = (a: string) => {
+        const current = (getValues("allergens") ?? []) as string[];
+        const updated = current.includes(a)
+            ? current.filter((x) => x !== a)
+            : [...current, a];
+        setValue("allergens", updated, { shouldDirty: true });
+        // On valide ce champ après modification
+        validateField("allergens");
     };
 
-    const onInvalid = () => {
-        const first = Object.values(errors)[0];
-        const message =
-            typeof first?.message === "string"
-                ? first.message
-                : "Veuillez corriger les erreurs du formulaire";
-        toast.error(message);
-    };
+    const onSubmit = async (data: DishFormData) => {
+        // 1) Validation manuelle complète
+        const validation = validateForm(data);
+        if (!validation.isValid) {
+            // Applique toutes les erreurs au formulaire
+            Object.entries(validation.errors).forEach(([field, message]) => {
+                setError(field as keyof DishFormData, {
+                    type: "manual",
+                    message,
+                });
+            });
 
-    const onSubmit = (data: DishFormData) => {
-        // ✅ payload FLAT pour matcher le DTO Kotlin
-        const dishRequest: CreateDishRequest = {
+            const firstError = Object.values(validation.errors)[0];
+            toast.error(firstError || "Veuillez corriger les erreurs du formulaire");
+            return;
+        }
+
+        // 2) Soumission si OK
+        const payload: CreateDishRequest = {
             name: data.name,
             description: data.description ?? "",
             price: data.price,
@@ -96,36 +134,34 @@ const CreateDishPage: React.FC = () => {
             allergens: data.allergens ?? [],
         };
 
-        createDishMutation.mutate(dishRequest, {
-            onSuccess: () => {
-                toast.success("Plat créé avec succès !");
-                queryClient.invalidateQueries({ queryKey: ["dishes"] });
-                reset();
-                navigate("/dashboard");
-            },
-            onError: (error: any) => {
-                const fieldErrors = error?.response?.data?.errors;
-                if (fieldErrors && typeof fieldErrors === "object") {
-                    Object.entries(fieldErrors).forEach(([field, msg]) => {
-                        setError(field as keyof DishFormData, {
-                            type: "server",
-                            message: String(msg),
-                        });
+        try {
+            await mutation.mutateAsync(payload);
+            toast.success("Plat créé avec succès !");
+            queryClient.invalidateQueries({ queryKey: ["dishes"] });
+            reset();
+            navigate("/dashboard");
+        } catch (error: any) {
+            const fieldErrors = error?.response?.data?.errors;
+            if (fieldErrors && typeof fieldErrors === "object") {
+                Object.entries(fieldErrors).forEach(([field, msg]) => {
+                    setError(field as keyof DishFormData, {
+                        type: "server",
+                        message: String(msg),
                     });
-                    const firstMsg = Object.values(fieldErrors)[0];
-                    toast.error(String(firstMsg) || "Erreur de validation");
-                } else {
-                    toast.error(
-                        error?.response?.data?.message ||
-                        error?.message ||
-                        "Erreur lors de la création du plat"
-                    );
-                }
-            },
-        });
+                });
+                const firstMsg = Object.values(fieldErrors)[0];
+                toast.error(String(firstMsg) || "Erreur de validation");
+            } else {
+                toast.error(
+                    error?.response?.data?.message ||
+                    error?.message ||
+                    "Erreur lors de la création du plat"
+                );
+            }
+        }
     };
 
-    const allergensWatch = watch("allergens") ?? [];
+    const isLoading = isSubmitting || mutation.isPending;
 
     return (
         <div className="min-h-screen bg-base-200">
@@ -138,12 +174,25 @@ const CreateDishPage: React.FC = () => {
                             <button
                                 className="btn btn-outline btn-sm"
                                 onClick={() => navigate("/dashboard")}
+                                type="button"
                             >
                                 ← Retour
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6" noValidate>
+                        {/* Résumé d’erreurs global (pratique pour debugger) */}
+                        {Object.keys(errors).length > 0 && (
+                            <div className="alert alert-error mb-4">
+                <span>
+                  Veuillez corriger :{" "}
+                    {Object.entries(errors).map(([k, v]) =>
+                        v?.message ? `${k}: ${(v.message as string)}; ` : null
+                    )}
+                </span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
                             {/* Nom */}
                             <div className="form-control">
                                 <label className="label">
@@ -252,26 +301,25 @@ const CreateDishPage: React.FC = () => {
                                     )}
                                 </label>
 
-                                {/* fix classe Tailwind: md:grid-cols-3 (et non md-grid-cols-3) */}
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                     {availableAllergens.map((a) => (
                                         <label key={a} className="label cursor-pointer justify-start gap-2">
                                             <input
                                                 type="checkbox"
                                                 className="checkbox checkbox-warning checkbox-xs"
-                                                checked={allergensWatch.includes(a)}
-                                                onChange={() => handleAllergenToggle(a)}
+                                                checked={allergens.includes(a)}
+                                                onChange={() => toggleAllergen(a)}
                                             />
                                             <span className="label-text text-xs">{getAllergenLabel(a)}</span>
                                         </label>
                                     ))}
                                 </div>
 
-                                {allergensWatch.length > 0 && (
+                                {allergens.length > 0 && (
                                     <div className="mt-2">
                                         <span className="text-xs text-warning">Allergènes sélectionnés: </span>
                                         <div className="flex flex-wrap gap-1 mt-1">
-                                            {allergensWatch.map((a) => (
+                                            {allergens.map((a: string) => (
                                                 <span key={a} className="badge badge-warning badge-xs">
                           {getAllergenLabel(a)}
                         </span>
@@ -295,10 +343,10 @@ const CreateDishPage: React.FC = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className={`btn btn-primary ${isSubmitting || createDishMutation.isPending ? "btn-disabled" : ""}`}
-                                    disabled={isSubmitting || createDishMutation.isPending}
+                                    className={`btn btn-primary ${isLoading ? "btn-disabled" : ""}`}
+                                    disabled={isLoading}
                                 >
-                                    {createDishMutation.isPending ? (
+                                    {isLoading ? (
                                         <>
                                             <span className="loading loading-spinner loading-sm"></span>
                                             Création...
