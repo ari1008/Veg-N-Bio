@@ -18,7 +18,7 @@ class LoginPage extends StatelessWidget {
       body: BlocListener<UserLoginBloc, UserLoginState>(
         listener: (context, state) {
           if (state.status == UserLoginStatus.loggingSuccess) {
-            context.go(AppRoute.chatbot.path);
+            context.go(AppRoute.home.path);
           } else if (state.status == UserLoginStatus.loggedError) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Mot de passe ou nom d'utilisateur incorrect")),

@@ -1,12 +1,15 @@
 import 'package:app/service/auth_data_source/api_auth_data_source.dart';
 import 'package:app/service/chatbot_data_source/api_chatbot_data_source.dart';
-import 'package:app/service/chatbot_data_source/repository/chatbot_repository.dart';
 import 'package:app/service/menu_data_source/api_menu_data_source.dart';
 import 'package:app/service/repository/auth_repository.dart';
+import 'package:app/service/repository/chatbot_repository.dart';
 import 'package:app/service/repository/menu_repository.dart';
+import 'package:app/service/repository/user_me_repository.dart';
+import 'package:app/service/user_me_data_source/api_user_me_data_source.dart';
 import 'package:app/shared/chatbot_bloc/chatbot_bloc.dart';
 import 'package:app/shared/menu_bloc/menu_bloc.dart';
 import 'package:app/shared/user_login_bloc/user_login_bloc.dart';
+import 'package:app/shared/user_me_bloc/user_me_bloc.dart';
 import 'package:app/shared/user_validation_bloc/user_validation_bloc.dart';
 import 'package:app/utils/route.dart';
 import 'package:app/utils/session_manager.dart';
@@ -32,6 +35,13 @@ class MyApp extends StatelessWidget {
           create: (_) => ChatbotBloc(
             chatbotRepository: ChatbotRepository(
               remoteDataSource: ApiChatbotDataSource(),
+            ),
+          ),
+        ),
+        BlocProvider<UserMeBloc>(
+          create: (_) => UserMeBloc(
+            userMeRepository: UserMeRepository(
+              remoteDataSource: ApiUserMeDataSource(),
             ),
           ),
         ),

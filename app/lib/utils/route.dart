@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../screen/chatbot_page.dart';
 import '../screen/login.page.dart';
 import '../screen/register.page.dart';
+import '../screen/user_me_screen.page.dart';
 
 
 final GoRouter router = GoRouter(
@@ -25,6 +26,10 @@ final GoRouter router = GoRouter(
     GoRoute(
     path: AppRoute.chatbot.path,
     builder: (context, state) => const ChatbotPage(),
+    ),
+    GoRoute(
+      path: AppRoute.home.path,
+      builder: (context, state) => const UserMePage(),
     )
   ],
 );
