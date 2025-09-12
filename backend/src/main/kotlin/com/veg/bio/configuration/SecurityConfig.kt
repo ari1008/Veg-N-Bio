@@ -37,6 +37,7 @@ class SecurityConfig(
                     .requestMatchers("/api/notprotected/restaurant/**").permitAll()
                     .requestMatchers("/api/notprotected/menu/**").permitAll()
                     .requestMatchers("/api/notprotected/meeting-rooms/**").permitAll()
+                    .requestMatchers("/api/notprotected/chatbot/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                     .anyRequest().authenticated()
             }
@@ -66,8 +67,6 @@ class SecurityConfig(
         val configuration = CorsConfiguration()
 
         configuration.allowedOriginPatterns = listOf(
-            //"http://localhost:*",
-            //"http://127.0.0.1:*",
             frontendUrl
         )
 

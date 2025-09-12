@@ -18,6 +18,12 @@ import ReservationPage from "./page/reservation.page.tsx";
 import EventRequestsPage from "./page/event-requests.page.tsx";
 import {CreateEventRequestPage} from "./page/create.event-request.page.tsx";
 import {ManageEventRequestsPage} from "./page/manage.event-requests.page.tsx";
+import ChatbotDashboardPage from "./page/chatbot.dashboard.page.tsx";
+import ChatbotDiseasesPage from "./page/chatbot.disease.page.tsx";
+import ChatbotSessionsPage from "./page/chatbot.session.page.tsx";
+import ChatbotReportsPage from "./page/chatbot.report.page.tsx";
+import ChatbotAnalyticsPage from "./page/chatbot.analytics.page.tsx";
+import ChatbotSettingsPage from "./page/chatbot.setting.page.tsx";
 
 function App() {
     const isAuthenticated = useAuthStore((s) => !!s.authData?.accessToken);
@@ -134,6 +140,58 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/chatbot/dashboard"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotDashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chatbot/diseases"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotDiseasesPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chatbot/sessions"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotSessionsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chatbot/reports"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotReportsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chatbot/analytics"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotAnalyticsPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/chatbot/settings"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ChatbotSettingsPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+
+
+
 
 
             </Routes>

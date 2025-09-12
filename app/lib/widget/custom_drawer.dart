@@ -32,15 +32,18 @@ class CustomDrawer extends StatelessWidget {
                   ),
                 ),
               ),
-              if (isConnected)
-                _buildItem(
-                    context, Icons.person, 'User Info', AppRoute.home.path)
-              else
+
+              if (isConnected) ...[
+                _buildItem(context, Icons.person, 'User Info', AppRoute.home.path),
+                _buildItem(context, Icons.chat, 'ChatBot Veto', AppRoute.chatbot.path),
+              ] else ...[
                 _buildItem(context, Icons.login, 'Login', AppRoute.login.path),
+              ],
+
               if (!isConnected)
-                _buildItem(context, Icons.app_registration, 'Register',
-                    AppRoute.register.path),
-              _buildItem(context, Icons.ac_unit, "Menu", AppRoute.menu.path),
+                _buildItem(context, Icons.app_registration, 'Register', AppRoute.register.path),
+
+              _buildItem(context, Icons.ac_unit, 'Menu', AppRoute.menu.path),
             ],
           );
         },
@@ -63,7 +66,6 @@ class CustomDrawer extends StatelessWidget {
             .currentConfiguration
             .uri
             .toString();
-
         if (currentRoute == routeName) {
           Navigator.pop(context);
           return;
@@ -71,8 +73,10 @@ class CustomDrawer extends StatelessWidget {
 
         Navigator.pop(context);
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          context.go(routeName);
-          onItemTap(label);
+          if (context.mounted) {
+            context.go(routeName);
+            onItemTap(label);
+          }
         });
       },
     );
