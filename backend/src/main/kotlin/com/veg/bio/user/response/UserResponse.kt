@@ -9,4 +9,5 @@ data class UserResponse(
     val firstName: String,
     val email: String,
     val role: Role,
+    val fidelity: Int,
 )

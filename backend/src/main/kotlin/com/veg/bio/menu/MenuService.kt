@@ -9,6 +9,7 @@ import com.veg.bio.infrastructure.table.DishEntity
 import com.veg.bio.infrastructure.table.InvoiceEntity
 import com.veg.bio.infrastructure.table.OrderEntity
 import com.veg.bio.infrastructure.table.OrderStatus
+import com.veg.bio.infrastructure.table.UserEntity
 import com.veg.bio.keycloak.Role
 import com.veg.bio.menu.domain.Dish
 import com.veg.bio.menu.domain.DishWithTotal
@@ -128,7 +129,11 @@ class MenuService(
         val updateOrder = orderEntity.copy(
             status = statusDto.status
         )
-        if (statusDto.status == OrderStatus.COMPLETED) createInvoice(orderEntity.totalAmount, orderEntity)
+        orderEntity.customer
+        if (statusDto.status == OrderStatus.COMPLETED){
+            updateFidelity(orderEntity.customer, orderEntity.totalAmount)
+            createInvoice(orderEntity.totalAmount, orderEntity)
+        }
         orderRepository.save(updateOrder)
         return OrderLineMapper.toResponse(updateOrder)
     }
@@ -138,6 +143,12 @@ class MenuService(
             order = orderEntity,
             totalAmount = totalAmount
         ))
+    }
+
+    fun updateFidelity(customerEntity: UserEntity, totalAmount: Double){
+        val totalAmountInt = totalAmount.toInt()
+        val customerUpdate = customerEntity.copy(fidelity = customerEntity.fidelity + totalAmountInt)
+        userRepository.save(customerUpdate)
     }
 
 

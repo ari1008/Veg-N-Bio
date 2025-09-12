@@ -34,4 +34,6 @@ data class UserEntity(
     val clientId: String,
 
     val role: Role,
+
+    val fidelity: Int = 0
 )

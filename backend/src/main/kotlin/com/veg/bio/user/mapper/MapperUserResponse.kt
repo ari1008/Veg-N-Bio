@@ -15,6 +15,7 @@ object MapperUserResponse {
             lastName = userEntity.lastName.value.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },
             email = userEntity.email.value,
             role = userEntity.role,
+            fidelity = userEntity.fidelity
         )
     }
 }

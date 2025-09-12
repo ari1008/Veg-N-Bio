@@ -4,7 +4,7 @@ import 'package:meta/meta.dart';
 
 import '../../model/DiagnoseResponse.dart';
 import '../../model/ReportErrorRequest.dart';
-import '../../service/chatbot_data_source/repository/chatbot_repository.dart';
+import '../../service/repository/chatbot_repository.dart';
 
 part 'chatbot_event.dart';
 part 'chatbot_state.dart';
