@@ -1,4 +1,3 @@
-// front/src/api/meetingroom/hook/hook.ts
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import type { MeetingRoom } from "../dto/dto";
@@ -66,7 +65,7 @@ export const useSearchMeetingRooms = (params: MeetingRoomSearchParams = {}) =>
         queryKey: ["meetingRooms", "search", params],
         queryFn: () => searchMeetingRooms(params),
         staleTime: 2 * 60 * 1000, // 2 minutes
-        enabled: !!(params.restaurantId || params.minCapacity || params.maxCapacity), // Seulement si il y a des critères
+        enabled: !!(params.restaurantId || params.minCapacity || params.maxCapacity),
         refetchOnWindowFocus: false,
     });
 

@@ -53,7 +53,6 @@ export interface StatusUpdate {
 }
 
 
-// Types pour le menu
 export interface Dish {
     id: string;
     name: string;

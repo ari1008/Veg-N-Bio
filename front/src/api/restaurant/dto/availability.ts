@@ -18,7 +18,7 @@ export const TimeRange = z.object({
     const [endH, endM] = data.end.split(":").map(Number)
     const startMinutes = startH * 60 + startM
     const endMinutes = endH * 60 + endM
-    return startMinutes < endMinutes || endMinutes < startMinutes // overnight allowed
+    return startMinutes < endMinutes || endMinutes < startMinutes
 }, {
     message: "End time must be after start time or be an overnight shift",
 })

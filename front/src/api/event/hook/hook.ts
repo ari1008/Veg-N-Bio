@@ -9,14 +9,12 @@ import {
     getRestaurantEventRequests, updateEventRequestStatus
 } from "../event.ts";
 
-// Hook pour créer une demande d'événement
 export const useCreateEventRequest = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: (data: CreateEventRequestRequest) => createEventRequest(data),
         onSuccess: () => {
-            // Invalider les caches des listes d'événements
             queryClient.invalidateQueries({ queryKey: ['eventRequests'] });
         },
         onError: (error) => {
@@ -25,7 +23,6 @@ export const useCreateEventRequest = () => {
     });
 };
 
-// Hook pour récupérer toutes mes demandes d'événements
 export const useAllMyEventRequests = (): UseQueryResult<EventRequest[], Error> => {
     return useQuery({
         queryKey: ['eventRequests', 'all'],
@@ -35,7 +32,6 @@ export const useAllMyEventRequests = (): UseQueryResult<EventRequest[], Error> =
     });
 };
 
-// Hook pour récupérer les demandes d'événements d'un restaurant
 export const useRestaurantEventRequests = (restaurantId: string): UseQueryResult<EventRequest[], Error> => {
     return useQuery({
         queryKey: ['eventRequests', 'restaurant', restaurantId],
@@ -46,7 +42,6 @@ export const useRestaurantEventRequests = (restaurantId: string): UseQueryResult
     });
 };
 
-// Hook pour récupérer les demandes d'événements d'un client
 export const useCustomerEventRequests = (customerId: string): UseQueryResult<EventRequest[], Error> => {
     return useQuery({
         queryKey: ['eventRequests', 'customer', customerId],
@@ -57,7 +52,6 @@ export const useCustomerEventRequests = (customerId: string): UseQueryResult<Eve
     });
 };
 
-// Hook pour mettre à jour le statut d'une demande d'événement
 export const useUpdateEventRequestStatus = () => {
     const queryClient = useQueryClient();
 
@@ -65,10 +59,8 @@ export const useUpdateEventRequestStatus = () => {
         mutationFn: ({ eventRequestId, payload }: { eventRequestId: string; payload: UpdateEventRequestStatusRequest }) =>
             updateEventRequestStatus(eventRequestId, payload),
         onSuccess: (updatedEventRequest) => {
-            // Invalider tous les caches d'événements
             queryClient.invalidateQueries({ queryKey: ['eventRequests'] });
 
-            // Mettre à jour le cache spécifique si on l'a
             queryClient.setQueryData(
                 ['eventRequest', updatedEventRequest.id],
                 updatedEventRequest
@@ -80,7 +72,6 @@ export const useUpdateEventRequestStatus = () => {
     });
 };
 
-// Hook pour annuler une demande d'événement
 export const useCancelEventRequest = () => {
     const queryClient = useQueryClient();
 
@@ -100,7 +91,6 @@ export const useCancelEventRequest = () => {
     });
 };
 
-// Hook manager avec filtres (similaire à useReservationManager)
 interface EventRequestFilters {
     status?: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
     type?: 'ANNIVERSAIRE_ENFANT' | 'CONFERENCE' | 'SEMINAIRE' | 'REUNION_ENTREPRISE' | 'AUTRE';
@@ -112,27 +102,22 @@ interface EventRequestFilters {
 export const useEventRequestManager = (filters: EventRequestFilters = {}) => {
     const { data: allEventRequests, isLoading } = useAllMyEventRequests();
 
-    // Filtrer les demandes d'événements côté client
     const filteredEventRequests = useMemo(() => {
         if (!allEventRequests) return [];
 
         return allEventRequests.filter(eventRequest => {
-            // Filtre par statut
             if (filters.status && eventRequest.status !== filters.status) {
                 return false;
             }
 
-            // Filtre par type
             if (filters.type && eventRequest.type !== filters.type) {
                 return false;
             }
 
-            // Filtre par restaurant
             if (filters.restaurantId && eventRequest.restaurantId !== filters.restaurantId) {
                 return false;
             }
 
-            // Filtre par date de début
             if (filters.startDate) {
                 const eventDate = new Date(eventRequest.startTime);
                 const filterStartDate = new Date(filters.startDate);
@@ -141,7 +126,6 @@ export const useEventRequestManager = (filters: EventRequestFilters = {}) => {
                 }
             }
 
-            // Filtre par date de fin
             if (filters.endDate) {
                 const eventDate = new Date(eventRequest.startTime);
                 const filterEndDate = new Date(filters.endDate);
@@ -159,16 +143,4 @@ export const useEventRequestManager = (filters: EventRequestFilters = {}) => {
         isLoading,
         totalCount: filteredEventRequests.length
     };
-};
-
-// Hook pour récupérer une demande d'événement par ID
-export const useEventRequestById = (eventRequestId: string): UseQueryResult<EventRequest, Error> => {
-    return useQuery({
-        queryKey: ['eventRequest', eventRequestId],
-        queryFn: () => {
-            // Cette fonction n'est pas encore implémentée côté backend
-            throw new Error("getEventRequestById not implemented");
-        },
-        enabled: !!eventRequestId,
-    });
 };

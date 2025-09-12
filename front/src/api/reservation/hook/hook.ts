@@ -121,12 +121,10 @@ export const useReservationById = (reservationId: string): UseQueryResult<Reserv
 const arrayDateToYMD = (dateArray: number[] | string | Date): string | null => {
     if (!dateArray) return null;
 
-    // Si c'est déjà une chaîne, l'utiliser directement
     if (typeof dateArray === 'string') {
         return dateArray;
     }
 
-    // Si c'est un objet Date
     if (dateArray instanceof Date) {
         try {
             return isNaN(dateArray.getTime()) ? null : dateArray.toISOString().split('T')[0];
@@ -135,11 +133,9 @@ const arrayDateToYMD = (dateArray: number[] | string | Date): string | null => {
         }
     }
 
-    // Si c'est un tableau [année, mois, jour, heure, minute]
     if (Array.isArray(dateArray) && dateArray.length >= 3) {
         try {
             const [year, month, day] = dateArray;
-            // Formater en YYYY-MM-DD
             const formattedMonth = month.toString().padStart(2, '0');
             const formattedDay = day.toString().padStart(2, '0');
             return `${year}-${formattedMonth}-${formattedDay}`;
@@ -151,7 +147,6 @@ const arrayDateToYMD = (dateArray: number[] | string | Date): string | null => {
     return null;
 };
 
-// Fonction utilitaire pour convertir une date en format YYYY-MM-DD de manière sécurisée
 const safeDateToYMD = (dateValue: number[] | string | Date): string | null => {
     return arrayDateToYMD(dateValue);
 };

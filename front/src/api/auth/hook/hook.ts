@@ -18,7 +18,7 @@ export const useSearchUsers = (params: UserSearchParams = {}) =>
         queryKey: ["users", "search", params],
         queryFn: () => searchCustomers(params),
         staleTime: 1 * 60 * 1000, // 1 minute
-        enabled: !!(params.name || params.email), // Seulement si il y a des critères de recherche
+        enabled: !!(params.name || params.email),
         refetchOnWindowFocus: false,
     });
 

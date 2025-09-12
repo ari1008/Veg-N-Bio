@@ -10,12 +10,10 @@ const apiPrivate = axios.create({
     },
 });
 
-// Fonction pour rediriger vers login et déconnecter
 const handleLogout = () => {
     console.log("Déconnexion automatique - token refresh échoué");
-    useAuthStore.getState().logout(); // Utilise ta méthode logout
+    useAuthStore.getState().logout();
 
-    // Redirection vers login
     window.location.href = '/login';
 };
 
@@ -36,11 +34,9 @@ apiPrivate.interceptors.response.use(
         const originalRequest = error.config;
         console.log("Erreur API détectée:", error.response?.status);
 
-        // Si c'est l'endpoint de refresh token qui échoue
         if (originalRequest.url?.includes("/authentification/refreshToken")) {
             console.log("Erreur sur refresh token endpoint");
 
-            // Si 400 ou 401 sur refresh token = déconnexion
             if (error.response?.status === 400 || error.response?.status === 401) {
                 console.log("Refresh token invalide - déconnexion");
                 handleLogout();
@@ -49,7 +45,6 @@ apiPrivate.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // Si 401 sur autre endpoint, tenter le refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
             console.log("Token expiré, tentative de refresh");
             originalRequest._retry = true;
@@ -68,17 +63,14 @@ apiPrivate.interceptors.response.use(
                 const newToken = response.data.accessToken;
                 console.log("Nouveau token obtenu:", !!newToken);
 
-                // Mettre à jour le store avec les nouvelles données
                 useAuthStore.getState().setAuthData(response.data);
 
-                // Retry la requête originale avec le nouveau token
                 originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
                 return apiPrivate(originalRequest);
 
             } catch (refreshError: any) {
                 console.error("Erreur lors du refresh token:", refreshError);
 
-                // Si le refresh échoue avec 400 ou 401, déconnecter
                 if (refreshError.response?.status === 400 || refreshError.response?.status === 401) {
                     console.log("Refresh token échoué - déconnexion");
                     handleLogout();

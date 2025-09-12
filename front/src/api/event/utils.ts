@@ -21,7 +21,6 @@ export const getEventStatusLabel = (status: string): string => {
     return EVENT_STATUS_LABELS[status] || status;
 };
 
-// Fonction pour formater les dates d'événements
 export const formatEventDateTime = (dateTime: string): string => {
     try {
         const date = new Date(dateTime);

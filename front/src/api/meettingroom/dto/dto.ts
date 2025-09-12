@@ -25,7 +25,6 @@ export const UpdateMeetingRoomSchema = z.object({
     isReservable: z.boolean().optional(),
 });
 
-// Types inférés
 export type MeetingRoom = z.infer<typeof MeetingRoomSchema>;
 export type CreateMeetingRoomRequest = z.infer<typeof CreateMeetingRoomSchema>;
 export type UpdateMeetingRoomRequest = z.infer<typeof UpdateMeetingRoomSchema>;

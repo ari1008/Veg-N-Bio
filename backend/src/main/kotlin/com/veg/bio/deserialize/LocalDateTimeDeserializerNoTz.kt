@@ -18,16 +18,14 @@ class LocalDateTimeDeserializerNoTz : StdDeserializer<LocalDateTime>(LocalDateTi
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): LocalDateTime {
         val value = p.text.trim()
 
-        // Essayer chaque formatter jusqu'à ce que l'un fonctionne
         for (formatter in formatters) {
             try {
                 return LocalDateTime.parse(value, formatter)
             } catch (e: Exception) {
-                // Continuer avec le prochain formatter
+
             }
         }
 
-        // Si aucun formatter ne fonctionne, utiliser le parser par défaut
         return LocalDateTime.parse(value)
     }
 }

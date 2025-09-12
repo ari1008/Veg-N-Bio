@@ -6,8 +6,8 @@ type AuthState = {
     authData: LoginResponse | null;
     setAuthData: (data: LoginResponse) => void;
     clearAuthData: () => void;
-    logout: () => void; // Nouvelle méthode
-    isAuthenticated: () => boolean; // Méthode utile
+    logout: () => void;
+    isAuthenticated: () => boolean;
 };
 
 export const useAuthStore = create<AuthState>()(
@@ -28,21 +28,17 @@ export const useAuthStore = create<AuthState>()(
             logout: () => {
                 console.log('Déconnexion complète');
 
-                // Nettoyer le store
                 set({ authData: null });
 
-                // Nettoyer localStorage (au cas où d'autres clés existent)
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('refreshToken');
 
-                // Nettoyer les cookies si tu en utilises
                 document.cookie.split(";").forEach((c) => {
                     document.cookie = c
                         .replace(/^ +/, "")
                         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                 });
 
-                // Le persist de Zustand va automatiquement nettoyer "auth-storage"
             },
 
             isAuthenticated: () => {

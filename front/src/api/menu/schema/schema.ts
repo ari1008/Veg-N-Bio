@@ -36,7 +36,6 @@ export const dishSchema = z.object({
 type DishFormData = z.infer<typeof dishSchema>;
 
 
-// Schéma pour une ligne de plat avec quantité
 export const dishNumberSchema = z.object({
     dishId: z.string()
         .min(1, "L'ID du plat est requis")
@@ -47,7 +46,6 @@ export const dishNumberSchema = z.object({
         .max(50, "La quantité ne peut pas dépasser 50"),
 });
 
-// Schéma pour créer une commande (format backend)
 export const createOrderSchema = z.object({
     idRestaurant: z.string()
         .min(1, "L'ID du restaurant est requis")
@@ -60,7 +58,6 @@ export const createOrderSchema = z.object({
         .max(20, "Maximum 20 plats par commande"),
 });
 
-// Schéma pour le formulaire frontend (plus simple)
 export const orderFormSchema = z.object({
     customerName: z.string()
         .min(1, "Le nom du client est requis")
@@ -71,14 +68,13 @@ export const orderFormSchema = z.object({
     customerId: z.string()
         .uuid("L'ID client doit être un UUID valide")
         .optional()
-        .or(z.literal("")), // Permet une chaîne vide
+        .or(z.literal("")),
 
     restaurantId: z.string()
         .min(1, "L'ID du restaurant est requis")
         .uuid("L'ID du restaurant doit être un UUID valide"),
 });
 
-// Schéma pour une ligne de commande dans le frontend
 export const orderLineSchema = z.object({
     dishId: z.string()
         .min(1, "L'ID du plat est requis")
@@ -92,7 +88,6 @@ export const orderLineSchema = z.object({
     allergens: z.array(z.string()).default([]),
 });
 
-// Types inférés
 export type CreateOrderFormData = z.infer<typeof createOrderSchema>;
 export type OrderFormData = z.infer<typeof orderFormSchema>;
 export type OrderLineData = z.infer<typeof orderLineSchema>;
