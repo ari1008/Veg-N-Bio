@@ -19,7 +19,8 @@ class ApiReviewDataSource implements ReviewDataSource {
   @override
   Future<Review> createReview(CreateReview createReview) async {
     try {
-      final response = await _dio.post(
+      final dio = await  makeTheHeaderWithAutoRefresh();
+      final response = await dio.post(
         "${dotenv.env['BASE_URL']}/reviews",
         data: createReview.toJson(),
       );

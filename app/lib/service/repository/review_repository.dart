@@ -12,25 +12,16 @@ class ReviewRepository {
     required ReviewDataSource remoteDataSource,
   }) : _remoteDataSource = remoteDataSource;
 
-  /// Créer un nouvel avis
-  ///
-  /// Lance une exception si :
-  /// - L'utilisateur a déjà laissé un avis pour cette ressource
-  /// - La ressource n'existe pas
-  /// - Les données sont invalides
   Future<Review> createReview(CreateReview createReview) async {
     try {
-      // Validation locale avant l'envoi
       _validateCreateReview(createReview);
 
       return await _remoteDataSource.createReview(createReview);
     } catch (e) {
-      // Re-lancer l'exception pour que la couche supérieure la gère
       rethrow;
     }
   }
 
-  /// Récupérer les avis paginés pour une ressource
   Future<PaginatedReviews> getReviews(
       ResourceType resourceType,
       String resourceId, {
@@ -38,7 +29,6 @@ class ReviewRepository {
         int size = 20,
       }) async {
     try {
-      // Validation des paramètres
       if (page < 0) {
         throw ArgumentError('La page doit être >= 0');
       }
@@ -57,7 +47,6 @@ class ReviewRepository {
     }
   }
 
-  /// Récupérer tous les avis pour une ressource (attention à la performance)
   Future<List<Review>> getAllReviews(
       ResourceType resourceType,
       String resourceId
@@ -69,7 +58,6 @@ class ReviewRepository {
     }
   }
 
-  /// Récupérer les statistiques d'avis pour une ressource
   Future<ReviewStats> getReviewStats(
       ResourceType resourceType,
       String resourceId
@@ -81,7 +69,6 @@ class ReviewRepository {
     }
   }
 
-  /// Vérifier si un utilisateur a déjà laissé un avis
   Future<bool> userHasReviewed(
       String userId,
       ResourceType resourceType,
@@ -94,12 +81,10 @@ class ReviewRepository {
           resourceId
       );
     } catch (e) {
-      // Si erreur, on considère qu'il n'a pas d'avis (comportement défensif)
       return false;
     }
   }
 
-  /// Récupérer avis + stats en une seule opération
   Future<ReviewSummary> getReviewSummary(
       ResourceType resourceType,
       String resourceId, {
@@ -107,7 +92,6 @@ class ReviewRepository {
         int size = 20,
       }) async {
     try {
-      // Appels parallèles pour optimiser les performances
       final futures = await Future.wait([
         getReviews(resourceType, resourceId, page: page, size: size),
         getReviewStats(resourceType, resourceId),
@@ -122,7 +106,6 @@ class ReviewRepository {
     }
   }
 
-  /// Validation locale des données avant envoi
   void _validateCreateReview(CreateReview createReview) {
     if (createReview.userId.isEmpty) {
       throw ArgumentError('L\'ID utilisateur ne peut pas être vide');
@@ -146,7 +129,6 @@ class ReviewRepository {
   }
 }
 
-/// Classe utilitaire pour combiner avis et stats
 class ReviewSummary {
   final PaginatedReviews reviews;
   final ReviewStats stats;
