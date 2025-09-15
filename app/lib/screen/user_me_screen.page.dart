@@ -25,7 +25,6 @@ class _UserMePageState extends State<UserMePage> {
   @override
   void initState() {
     super.initState();
-    // Charge les infos utilisateur au montage
     context.read<UserMeBloc>().add(FetchUserMeEvent());
   }
 
@@ -68,7 +67,6 @@ class _UserMePageState extends State<UserMePage> {
 
           final user = state.userMe;
           if (user == null) {
-            // Cas improbable, mais on gère proprement
             return _ErrorView(
                 onRetry: _refresh,
                 message: "Impossible d'afficher vos informations.");
@@ -82,16 +80,12 @@ class _UserMePageState extends State<UserMePage> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // En-tête profil
                   _ProfileHeader(user: user),
                   const SizedBox(height: 16),
-                  // Carte d'infos
                   _InfoCard(user: user),
                   const SizedBox(height: 16),
-                  // Fidélité
                   _FidelityCard(points: user.fidelity),
                   const SizedBox(height: 24),
-                  // Bouton refresh manuel (en plus du pull-to-refresh)
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
@@ -118,7 +112,6 @@ class _UserMePageState extends State<UserMePage> {
   }
 }
 
-// ---------- Widgets privés ----------
 
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({required this.user});
@@ -249,7 +242,6 @@ class _FidelityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Petites paliers visuels
     final level = points >= 200
         ? 'Platine'
         : points >= 120

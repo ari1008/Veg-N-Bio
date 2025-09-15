@@ -19,7 +19,6 @@ class _ChatbotPageState extends State<ChatbotPage> {
   List<String> selectedSymptoms = [];
   String? selectedRace;
 
-  // Couleurs cohérentes avec le thème Veg'N Bio
   static const Color primaryGreen = Color(0xFF4CAF50);
   static const Color lightGreen = Color(0xFFE8F5E8);
   static const Color accentGreen = Color(0xFF2E7D32);
@@ -70,7 +69,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
                 ),
               ),
             );
-            Navigator.of(context).pop(); // Fermer le dialog
+            Navigator.of(context).pop();
           }
         },
         builder: (context, state) {
@@ -356,7 +355,6 @@ class _ChatbotPageState extends State<ChatbotPage> {
 
             const SizedBox(height: 20),
 
-            // Boutons d'action
             Row(
               children: [
                 Expanded(

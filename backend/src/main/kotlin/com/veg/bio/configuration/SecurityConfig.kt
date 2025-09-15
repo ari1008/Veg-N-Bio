@@ -38,6 +38,8 @@ class SecurityConfig(
                     .requestMatchers("/api/notprotected/menu/**").permitAll()
                     .requestMatchers("/api/notprotected/meeting-rooms/**").permitAll()
                     .requestMatchers("/api/notprotected/chatbot/**").permitAll()
+                    // Fixed patterns - using ** at the end only
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/reviews/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                     .anyRequest().authenticated()
             }

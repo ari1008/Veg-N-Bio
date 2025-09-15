@@ -1,4 +1,5 @@
 class UserMe{
+  final String id;
   final String username;
   final String lastName;
   final String firstName;
@@ -6,6 +7,7 @@ class UserMe{
   final String role;
   final int fidelity;
   UserMe({
+    required this.id,
     required this.username,
     required this.lastName,
     required this.firstName,
@@ -16,6 +18,7 @@ class UserMe{
 
   factory UserMe.fromJson(Map<String, dynamic> json) {
     return UserMe(
+      id: json['id'],
       username: json['username'],
       lastName: json['lastName'],
       firstName: json['firstName'],
@@ -27,6 +30,7 @@ class UserMe{
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'username': username,
       'lastName': lastName,
       'firstName': firstName,

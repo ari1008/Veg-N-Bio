@@ -10,6 +10,7 @@ object MapperUserResponse {
 
     fun mapToResponse(userEntity: UserEntity): UserResponse{
         return UserResponse(
+            id = userEntity.id.toString(),
             username = userEntity.username.value,
             firstName = userEntity.firstName.value.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },
             lastName = userEntity.lastName.value.replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() },

@@ -24,6 +24,7 @@ import ChatbotSessionsPage from "./page/chatbot.session.page.tsx";
 import ChatbotReportsPage from "./page/chatbot.report.page.tsx";
 import ChatbotAnalyticsPage from "./page/chatbot.analytics.page.tsx";
 import ChatbotSettingsPage from "./page/chatbot.setting.page.tsx";
+import ReviewsModerationPage from "./page/reviews.moderation.page.tsx";
 
 function App() {
     const isAuthenticated = useAuthStore((s) => !!s.authData?.accessToken);
@@ -188,6 +189,16 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route
+                    path="/admin/reviews/moderation"
+                    element={
+                        <ProtectedRoute isAuthenticated={isAuthenticated}>
+                            <ReviewsModerationPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+
 
 
 

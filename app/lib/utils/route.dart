@@ -9,7 +9,7 @@ import '../screen/user_me_screen.page.dart';
 
 
 final GoRouter router = GoRouter(
-  initialLocation: AppRoute.login.path,
+  initialLocation: AppRoute.menu.path,
   routes: [
     GoRoute(
       path: AppRoute.login.path,

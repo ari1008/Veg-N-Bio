@@ -12,13 +12,20 @@ import com.veg.bio.reservation.ReservationConflictException
 import com.veg.bio.reservation.ReservationNotFoundException
 import com.veg.bio.reservation.RestaurantClosedException
 import com.veg.bio.reservation.UnauthorizedReservationAccessException
+import com.veg.bio.review.DuplicateReviewException
+import com.veg.bio.review.InvalidModerationException
+import com.veg.bio.review.InvalidReviewDataException
+import com.veg.bio.review.ResourceNotFoundException
+import com.veg.bio.review.ReviewNotFoundException
 import com.veg.bio.user.NotFoundUserWithClientId
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import java.time.LocalDateTime
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -121,4 +128,120 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(mapOf("error" to "BAD_REQUEST", "message" to ex.message!!))
     }
+
+    @ExceptionHandler(DuplicateReviewException::class)
+    fun handleDuplicateReview(ex: DuplicateReviewException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "DUPLICATE_REVIEW",
+            message = "Vous avez déjà laissé un avis pour cette ressource",
+            details = mapOf(
+                "userId" to ex.userId,
+                "resourceType" to ex.resourceType,
+                "resourceId" to ex.resourceId
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.CONFLICT.value()
+        )
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error)
+    }
+
+    @ExceptionHandler(ResourceNotFoundException::class)
+    fun handleResourceNotFound(ex: ResourceNotFoundException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "RESOURCE_NOT_FOUND",
+            message = "${ex.resourceType} non trouvé",
+            details = mapOf(
+                "resourceType" to ex.resourceType,
+                "resourceId" to ex.resourceId
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.NOT_FOUND.value()
+        )
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error)
+    }
+
+    @ExceptionHandler(InvalidReviewDataException::class)
+    fun handleInvalidReviewData(ex: InvalidReviewDataException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "INVALID_DATA",
+            message = "Données invalides",
+            details = mapOf(
+                "field" to ex.field,
+                "value" to ex.value,
+                "constraint" to ex.constraint
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.BAD_REQUEST.value()
+        )
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error)
+    }
+
+    @ExceptionHandler(ReviewNotFoundException::class)
+    fun handleReviewNotFound(ex: ReviewNotFoundException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "REVIEW_NOT_FOUND",
+            message = "Avis non trouvé",
+            details = mapOf(
+                "reviewId" to ex.reviewId
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.NOT_FOUND.value()
+        )
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error)
+    }
+
+    @ExceptionHandler(InvalidModerationException::class)
+    fun handleInvalidModeration(ex: InvalidModerationException): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "INVALID_MODERATION",
+            message = "Opération de modération invalide",
+            details = mapOf(
+                "reviewId" to ex.reviewId,
+                "reason" to ex.reason
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.BAD_REQUEST.value()
+        )
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error)
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidationErrors(ex: MethodArgumentNotValidException): ResponseEntity<ErrorResponse> {
+        val fieldErrors = ex.bindingResult.fieldErrors.associate {
+            it.field to (it.defaultMessage ?: "Valeur invalide")
+        }
+
+        val error = ErrorResponse(
+            error = "VALIDATION_ERROR",
+            message = "Erreurs de validation",
+            details = mapOf(
+                "fieldErrors" to fieldErrors
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.BAD_REQUEST.value()
+        )
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error)
+    }
+
+    @ExceptionHandler(Exception::class)
+    fun handleGenericError(ex: Exception): ResponseEntity<ErrorResponse> {
+        val error = ErrorResponse(
+            error = "INTERNAL_ERROR",
+            message = "Erreur interne du serveur",
+            details = mapOf(
+                "cause" to (ex.message ?: "Erreur inconnue")
+            ),
+            timestamp = LocalDateTime.now(),
+            status = HttpStatus.INTERNAL_SERVER_ERROR.value()
+        )
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error)
+    }
 }
+
+data class ErrorResponse(
+    val error: String,
+    val message: String,
+    val details: Map<String, Any?> = emptyMap(),
+    val timestamp: LocalDateTime,
+    val status: Int
+)

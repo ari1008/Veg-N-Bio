@@ -4,10 +4,13 @@ import 'package:app/service/menu_data_source/api_menu_data_source.dart';
 import 'package:app/service/repository/auth_repository.dart';
 import 'package:app/service/repository/chatbot_repository.dart';
 import 'package:app/service/repository/menu_repository.dart';
+import 'package:app/service/repository/review_repository.dart';
 import 'package:app/service/repository/user_me_repository.dart';
+import 'package:app/service/review_data_source/api_review_data_source.dart';
 import 'package:app/service/user_me_data_source/api_user_me_data_source.dart';
 import 'package:app/shared/chatbot_bloc/chatbot_bloc.dart';
 import 'package:app/shared/menu_bloc/menu_bloc.dart';
+import 'package:app/shared/review_bloc/review_bloc.dart';
 import 'package:app/shared/user_login_bloc/user_login_bloc.dart';
 import 'package:app/shared/user_me_bloc/user_me_bloc.dart';
 import 'package:app/shared/user_validation_bloc/user_validation_bloc.dart';
@@ -31,6 +34,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<ReviewBloc>(
+          create: (_) => ReviewBloc(
+            reviewRepository: ReviewRepository(
+              remoteDataSource: ApiReviewDataSource(),
+            ),
+          ),
+        ),
         BlocProvider<ChatbotBloc>(
           create: (_) => ChatbotBloc(
             chatbotRepository: ChatbotRepository(

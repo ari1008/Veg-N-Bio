@@ -3,7 +3,8 @@ enum AppRoute{
   register('/register'),
   home('/'),
   menu('/menu'),
-  chatbot('/chatbot');
+  chatbot('/chatbot'),
+  createReview('/create_review');
 
   final String path;
   const AppRoute(this.path);
