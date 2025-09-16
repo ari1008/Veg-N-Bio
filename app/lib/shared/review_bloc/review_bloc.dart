@@ -1,7 +1,7 @@
-// lib/shared/review_bloc/review_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../model/PaginatedReviews.dart';
 import '../../model/ResourceType.dart';
+import '../../model/Review.dart';
 import '../../model/ReviewStats.dart';
 import '../../service/repository/review_repository.dart';
 import '../../model/CreateReview.dart';
@@ -10,6 +10,8 @@ import 'review_state.dart';
 
 class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
   final ReviewRepository _reviewRepository;
+
+  ReviewRepository get reviewRepository => _reviewRepository;
 
   ReviewBloc({
     required ReviewRepository reviewRepository,
@@ -21,6 +23,8 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     on<LoadReviewStatsEvent>(_onLoadReviewStats);
     on<CheckUserReviewEvent>(_onCheckUserReview);
     on<ResetReviewsEvent>(_onResetReviews);
+    on<SetCurrentDishEvent>(_onSetCurrentDish);
+    on<LoadDishReviewsEvent>(_onLoadDishReviews);
   }
 
   /// Gestionnaire pour créer un avis
@@ -33,12 +37,15 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     try {
       final newReview = await _reviewRepository.createReview(event.createReview);
 
+      // FIXED: Only update the reviews list if it's for the current dish
+      final shouldUpdateList = state.currentDishId == event.createReview.resourceId;
+
       emit(state.copyWith(
         status: ReviewStatus.created,
         lastCreatedReview: newReview,
-        userHasReviewed: true,
-        reviews: [newReview, ...state.reviews],
-        totalElements: state.totalElements + 1,
+        userHasReviewed: true, // FIXED: Set to true after creating review
+        reviews: shouldUpdateList ? [newReview, ...state.reviews] : state.reviews,
+        totalElements: shouldUpdateList ? state.totalElements + 1 : state.totalElements,
       ));
     } catch (error) {
       emit(state.copyWith(
@@ -227,5 +234,63 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
       resourceType: resourceType,
       resourceId: resourceId,
     ));
+  }
+
+  // FIXED: définir le plat courant (et vider la liste si on change)
+  Future<void> _onSetCurrentDish(
+      SetCurrentDishEvent event,
+      Emitter<ReviewState> emit,
+      ) async {
+    final changed = event.dishId != state.currentDishId;
+    emit(state.copyWith(
+      currentDishId: event.dishId,
+      reviews: changed ? <Review>[] : state.reviews,
+      userHasReviewed: changed ? false : state.userHasReviewed, // FIXED: Reset when changing dish
+      stats: changed ? null : state.stats, // FIXED: Reset stats when changing dish
+    ));
+  }
+
+  // FIXED: charger un petit lot d'avis pour UN plat (aperçu)
+  // Dans _onLoadDishReviews, ajoutez des logs :
+  Future<void> _onLoadDishReviews(
+      LoadDishReviewsEvent event,
+      Emitter<ReviewState> emit,
+      ) async {
+    print('🎯 LoadDishReviewsEvent received');
+    print('   - dishId: ${event.dishId}');
+    print('   - size: ${event.size}');
+
+    emit(state.copyWith(
+      status: ReviewStatus.loading,
+      currentDishId: event.dishId,
+      clearError: true,
+    ));
+
+    try {
+      final paginated = await _reviewRepository.getReviews(
+        ResourceType.DISH,
+        event.dishId,
+        page: 0,
+        size: event.size,
+      );
+
+      print('🎯 LoadDishReviewsEvent success');
+      print('   - received ${paginated.content.length} reviews');
+
+      emit(state.copyWith(
+        status: ReviewStatus.success,
+        reviews: paginated.content,
+        currentPage: paginated.currentPage,
+        totalPages: paginated.totalPages,
+        totalElements: paginated.totalElements,
+        hasReachedMax: !paginated.hasNext,
+      ));
+    } catch (error) {
+      print('🎯 LoadDishReviewsEvent error: $error');
+      emit(state.copyWith(
+        status: ReviewStatus.failure,
+        errorMessage: error.toString(),
+      ));
+    }
   }
 }

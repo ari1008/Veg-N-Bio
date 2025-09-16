@@ -1,4 +1,3 @@
-// lib/shared/review_bloc/review_state.dart
 import '../../model/Review.dart';
 import '../../model/ReviewStats.dart';
 
@@ -25,6 +24,7 @@ class ReviewState {
   final int totalElements;
   final bool userHasReviewed;
   final Review? lastCreatedReview;
+  final String? currentDishId;
 
   const ReviewState({
     this.status = ReviewStatus.initial,
@@ -37,6 +37,7 @@ class ReviewState {
     this.totalElements = 0,
     this.userHasReviewed = false,
     this.lastCreatedReview,
+    this.currentDishId,
   });
 
   ReviewState copyWith({
@@ -52,11 +53,13 @@ class ReviewState {
     Review? lastCreatedReview,
     bool clearError = false,
     bool clearLastCreated = false,
+    String? currentDishId,
+    bool clearStats = false, // AJOUTÉ: pour pouvoir reset les stats
   }) {
     return ReviewState(
       status: status ?? this.status,
       reviews: reviews ?? this.reviews,
-      stats: stats ?? this.stats,
+      stats: clearStats ? null : (stats ?? this.stats), // FIXED: Gestion du reset stats
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       currentPage: currentPage ?? this.currentPage,
@@ -64,6 +67,7 @@ class ReviewState {
       totalElements: totalElements ?? this.totalElements,
       userHasReviewed: userHasReviewed ?? this.userHasReviewed,
       lastCreatedReview: clearLastCreated ? null : (lastCreatedReview ?? this.lastCreatedReview),
+      currentDishId: currentDishId ?? this.currentDishId,
     );
   }
 
@@ -78,11 +82,12 @@ class ReviewState {
       totalElements: $totalElements,
       userHasReviewed: $userHasReviewed,
       errorMessage: $errorMessage,
-      stats: $stats
+      stats: $stats,
+      currentDishId: $currentDishId
     }''';
   }
 
-  /// Helpers pour l'UI
+  // Helpers UI
   bool get isLoading => status == ReviewStatus.loading;
   bool get isLoadingMore => status == ReviewStatus.loadingMore;
   bool get isCreating => status == ReviewStatus.creating;
@@ -93,7 +98,6 @@ class ReviewState {
   bool get isInitial => status == ReviewStatus.initial;
   bool get wasJustCreated => status == ReviewStatus.created && lastCreatedReview != null;
 
-  /// Retourne le message d'erreur approprié selon le contexte
   String get contextualErrorMessage {
     switch (status) {
       case ReviewStatus.createFailure:

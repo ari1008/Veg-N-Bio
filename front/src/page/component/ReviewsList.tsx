@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {useReviews} from "../../api/review/hook.ts";
 import {ReviewCard} from "./card/ReviewCard.tsx";
+import { ReviewStats } from './ReviewStats.tsx';
 
 interface ReviewsListProps {
     resourceType: 'RESTAURANT' | 'DISH';
@@ -16,12 +17,14 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
                                                             pageSize = 10,
                                                         }) => {
     const [currentPage, setCurrentPage] = useState(0);
+    const [currentPageSize, setCurrentPageSize] = useState(pageSize);
+    const [minRating, setMinRating] = useState<number | null>(null);
 
-    const { data: reviewsData, isLoading, error } = useReviews(
+    const { data: reviewsData, isLoading, error, refetch } = useReviews(
         resourceType,
         resourceId,
         currentPage,
-        pageSize
+        currentPageSize
     );
 
     if (isLoading) {
@@ -38,9 +41,15 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
 
     if (error) {
         return (
-            <div className="text-center py-8">
-                <div className="text-red-600 mb-2">Erreur lors du chargement des avis</div>
+            <div className="text-center py-8 space-y-4">
+                <div className="text-red-600">Erreur lors du chargement des avis</div>
                 <p className="text-gray-500 text-sm">{error.message}</p>
+                <button
+                    onClick={() => refetch()}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                    Réessayer
+                </button>
             </div>
         );
     }
@@ -54,10 +63,59 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
         );
     }
 
+    const filteredContent = useMemo(() => {
+        if (!minRating) return reviewsData.content;
+        return reviewsData.content.filter(r => r.rating >= minRating);
+    }, [reviewsData, minRating]);
+
     return (
         <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <ReviewStats resourceType={resourceType} resourceId={resourceId} />
+
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="minRating" className="text-sm text-gray-600">Filtrer</label>
+                        <select
+                            id="minRating"
+                            className="border-gray-300 rounded-md text-sm"
+                            value={minRating ?? ''}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setMinRating(val ? Number(val) : null);
+                                setCurrentPage(0);
+                            }}
+                        >
+                            <option value="">Toutes notes</option>
+                            <option value="5">5 étoiles et plus</option>
+                            <option value="4">4 étoiles et plus</option>
+                            <option value="3">3 étoiles et plus</option>
+                            <option value="2">2 étoiles et plus</option>
+                            <option value="1">1 étoile et plus</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="pageSize" className="text-sm text-gray-600">Par page</label>
+                        <select
+                            id="pageSize"
+                            className="border-gray-300 rounded-md text-sm"
+                            value={currentPageSize}
+                            onChange={(e) => {
+                                const next = Number(e.target.value);
+                                setCurrentPageSize(next);
+                                setCurrentPage(0);
+                            }}
+                        >
+                            {[5, 10, 20, 50].map(size => (
+                                <option key={size} value={size}>{size}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
             {/* Reviews */}
-            {reviewsData.content.map((review) => (
+            {filteredContent.map((review) => (
                 <ReviewCard key={review.id} review={review} />
             ))}
 
@@ -83,11 +141,14 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
                     <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                         <div>
                             <p className="text-sm text-gray-700">
-                                Affichage de <span className="font-medium">{currentPage * pageSize + 1}</span> à{' '}
+                                Affichage de <span className="font-medium">{currentPage * currentPageSize + 1}</span> à{' '}
                                 <span className="font-medium">
-                  {Math.min((currentPage + 1) * pageSize, reviewsData.totalElements)}
+                  {Math.min((currentPage + 1) * currentPageSize, reviewsData.totalElements)}
                 </span>{' '}
                                 sur <span className="font-medium">{reviewsData.totalElements}</span> avis
+                                {minRating ? (
+                                    <span className="text-gray-500"> — {filteredContent.length} visibles après filtre</span>
+                                ) : null}
                             </p>
                         </div>
                         <div>

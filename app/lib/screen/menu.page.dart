@@ -1,21 +1,21 @@
 import 'package:app/model/dish.dart';
 import 'package:app/model/Review.dart';
-import 'package:app/model/CreateReview.dart';
 import 'package:app/shared/menu_bloc/menu_bloc.dart';
 import 'package:app/shared/review_bloc/review_bloc.dart';
 import 'package:app/shared/review_bloc/review_state.dart';
 import 'package:app/shared/review_bloc/review_event.dart';
 import 'package:app/shared/user_me_bloc/user_me_bloc.dart';
 import 'package:app/widget/custom_scaffold.dart';
-import 'package:app/widget/star_rating.dart';
 import 'package:app/widget/review_card.dart';
-import 'package:app/widget/review_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../model/ResourceType.dart';
+import '../model/ReviewListData.dart';
+import '../model/ReviewStats.dart';
 import '../utils/app_route_enum.dart';
+import '../utils/tuple2.dart';
 import '../widget/compact_rating.dart';
 import '../widget/compact_review_card.dart';
 import '../widget/review_form_modal.dart';
@@ -34,9 +34,7 @@ class _MenuPageState extends State<MenuPage> {
   @override
   void initState() {
     super.initState();
-
     context.read<MenuBloc>().add(const FetchMenuEvent());
-
     _scroll.addListener(() {
       final shouldShow = _scroll.position.pixels > 300;
       if (shouldShow != _showFab) {
@@ -46,6 +44,8 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<void> _refresh() async {
+    // Reset le plat courant pour éviter des rebuilds inutiles
+    context.read<ReviewBloc>().add(const SetCurrentDishEvent(null));
     context.read<MenuBloc>().add(const FetchMenuEvent());
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Menu actualisé')),
@@ -94,8 +94,7 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Widget _buildContent(MenuState state) {
-    if (state.status == MenuStatus.loading ||
-        state.status == MenuStatus.initial) {
+    if (state.status == MenuStatus.loading || state.status == MenuStatus.initial) {
       return ListView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -115,9 +114,7 @@ class _MenuPageState extends State<MenuPage> {
           const SizedBox(height: 120),
           _ErrorView(
             message: state.errorMessage ?? 'Impossible de charger le menu',
-            onRetry: () => context
-                .read<MenuBloc>()
-                .add(const FetchMenuEvent()),
+            onRetry: () => context.read<MenuBloc>().add(const FetchMenuEvent()),
           ),
           const SizedBox(height: 400),
         ],
@@ -148,7 +145,6 @@ class _MenuPageState extends State<MenuPage> {
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) => _DishTile(dish: items[index]),
         ),
-
         Positioned(
           right: 16,
           bottom: 16,
@@ -210,13 +206,127 @@ class _DishTile extends StatefulWidget {
 class _DishTileState extends State<_DishTile> {
   bool _showReviews = false;
 
+  // NOUVELLE APPROCHE: Cache individuel par plat
+  ReviewStats? _cachedStats;
+  List<Review> _cachedReviews = [];
+  bool _isLoadingStats = false;
+  bool _isLoadingReviews = false;
+  bool _hasLoadedStats = false;
+  bool _hasLoadedReviews = false;
+  String? _errorMessage;
+  bool _userHasReviewed = false;
+  bool _hasCheckedUserReview = false;
+
   @override
   void initState() {
     super.initState();
-    context.read<ReviewBloc>().add(LoadReviewStatsEvent(
-      resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
-    ));
+    _loadStatsIfNeeded();
+  }
+
+  void _loadStatsIfNeeded() {
+    if (!_hasLoadedStats && !_isLoadingStats) {
+      _loadStats();
+    }
+  }
+
+  Future<void> _loadStats() async {
+    if (_isLoadingStats) return;
+
+    setState(() {
+      _isLoadingStats = true;
+      _errorMessage = null;
+    });
+
+    final dishIdStr = widget.dish.id!.toString();
+    final reviewRepository = context.read<ReviewBloc>().reviewRepository;
+
+    try {
+      final stats = await reviewRepository.getReviewStats(
+        ResourceType.DISH,
+        dishIdStr,
+      );
+
+      if (mounted) {
+        setState(() {
+          _cachedStats = stats;
+          _isLoadingStats = false;
+          _hasLoadedStats = true;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isLoadingStats = false;
+          _errorMessage = error.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadReviews() async {
+    if (_isLoadingReviews) return;
+
+    setState(() {
+      _isLoadingReviews = true;
+      _errorMessage = null;
+    });
+
+    final dishIdStr = widget.dish.id!.toString();
+    final reviewRepository = context.read<ReviewBloc>().reviewRepository;
+
+    try {
+      final paginated = await reviewRepository.getReviews(
+        ResourceType.DISH,
+        dishIdStr,
+        page: 0,
+        size: 3,
+      );
+
+      if (mounted) {
+        setState(() {
+          _cachedReviews = paginated.content;
+          _isLoadingReviews = false;
+          _hasLoadedReviews = true;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isLoadingReviews = false;
+          _errorMessage = error.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _checkUserReview() async {
+    final userState = context.read<UserMeBloc>().state;
+    if (userState.userMe == null || _hasCheckedUserReview) return;
+
+    final dishIdStr = widget.dish.id!.toString();
+    final reviewRepository = context.read<ReviewBloc>().reviewRepository;
+
+    try {
+      final hasReviewed = await reviewRepository.userHasReviewed(
+        userState.userMe!.id,
+        ResourceType.DISH,
+        dishIdStr,
+      );
+
+      if (mounted) {
+        setState(() {
+          _userHasReviewed = hasReviewed;
+          _hasCheckedUserReview = true;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _userHasReviewed = false;
+          _hasCheckedUserReview = true;
+        });
+      }
+    }
   }
 
   @override
@@ -225,256 +335,238 @@ class _DishTileState extends State<_DishTile> {
       elevation: 1.5,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CircleAvatar(child: Text(_categoryEmoji(widget.dish.category))),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.dish.name,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${widget.dish.price.toStringAsFixed(2)} €',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          Chip(
-                            label: Text(_categoryLabelFr(widget.dish.category)),
-                            visualDensity:
-                            const VisualDensity(horizontal: -4, vertical: -4),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: BorderSide.none,
-                          ),
-                          Chip(
-                            label:
-                            Text(widget.dish.available ? 'Disponible' : 'Indisponible'),
-                            backgroundColor: widget.dish.available
-                                ? Theme.of(context).colorScheme.secondaryContainer
-                                : Theme.of(context).colorScheme.errorContainer,
-                            labelStyle: TextStyle(
-                              color: widget.dish.available
-                                  ? Theme.of(context).colorScheme.onSecondaryContainer
-                                  : Theme.of(context).colorScheme.onErrorContainer,
-                            ),
-                            visualDensity:
-                            const VisualDensity(horizontal: -4, vertical: -4),
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            side: BorderSide.none,
-                          ),
-                        ],
-                      ),
-
-                      if ((widget.dish.description ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.dish.description!,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.black54),
-                        ),
-                      ],
-
-                      if (widget.dish.allergens.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: -6,
-                          children: _buildAllergenChips(widget.dish.allergens),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
+          _buildDishHeader(),
           _buildReviewSection(),
         ],
       ),
     );
   }
 
-  Widget _buildReviewSection() {
-    return BlocBuilder<ReviewBloc, ReviewState>(
-      builder: (context, reviewState) {
-        return Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).dividerColor.withOpacity(0.5),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (reviewState.stats != null && reviewState.stats!.totalReviews > 0) ...[
-                    CompactRating(
-                      averageRating: reviewState.stats!.averageRating,
-                      totalReviews: reviewState.stats!.totalReviews,
-                      starSize: 16,
-                    ),
-                  ] else ...[
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star_border,
-                          size: 16,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Aucun avis',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  if (reviewState.stats != null && reviewState.stats!.totalReviews > 0) ...[
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _showReviews = !_showReviews;
-                        });
-                        if (_showReviews) {
-                          _loadReviewsForThisDish();
-                        }
-                      },
-                      icon: Icon(
-                        _showReviews ? Icons.expand_less : Icons.expand_more,
-                        size: 18,
-                      ),
-                      label: Text(
-                        _showReviews ? 'Masquer' : 'Voir avis',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+  Widget _buildDishHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(child: Text(_categoryEmoji(widget.dish.category))),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.dish.name,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
+                    Text(
+                      '${widget.dish.price.toStringAsFixed(2)} €',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
-
-                  _buildRateButton(reviewState),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    Chip(
+                      label: Text(_categoryLabelFr(widget.dish.category)),
+                      visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      side: BorderSide.none,
+                    ),
+                    Chip(
+                      label: Text(widget.dish.available ? 'Disponible' : 'Indisponible'),
+                      backgroundColor: widget.dish.available
+                          ? Theme.of(context).colorScheme.secondaryContainer
+                          : Theme.of(context).colorScheme.errorContainer,
+                      labelStyle: TextStyle(
+                        color: widget.dish.available
+                            ? Theme.of(context).colorScheme.onSecondaryContainer
+                            : Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                      visualDensity:
+                      const VisualDensity(horizontal: -4, vertical: -4),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      side: BorderSide.none,
+                    ),
+                  ],
+                ),
+                if ((widget.dish.description ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    widget.dish.description!,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: Colors.black54),
+                  ),
                 ],
-              ),
+                if (widget.dish.allergens.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: -6,
+                    children: _buildAllergenChips(widget.dish.allergens),
+                  ),
+                ],
+              ],
             ),
-
-            if (_showReviews) _buildReviewsList(reviewState),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
-  void _loadReviewsForThisDish() {
-    context.read<ReviewBloc>().add(LoadReviewsEvent(
-      resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
-      size: 3,
-    ));
-  }
-
-  Widget _buildReviewsList(ReviewState reviewState) {
-    if (reviewState.isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (reviewState.hasError) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'Erreur lors du chargement des avis',
-          style: TextStyle(color: Colors.red.shade600),
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
-    final dishReviews = reviewState.reviews.where((review) {
-      return review.resourceType == ResourceType.DISH &&
-          review.resourceId == widget.dish.id;
-    }).toList();
-
-    if (dishReviews.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Aucun avis disponible pour ce plat',
-          textAlign: TextAlign.center,
-        ),
-      );
-    }
-
+  Widget _buildReviewSection() {
     return Column(
       children: [
-        ...dishReviews.take(3).map((review) => CompactReviewCard(
-          review: review,
-          onTap: () {
-          },
-        )),
-
-        if (reviewState.stats != null && reviewState.stats!.totalReviews > 3)
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: TextButton(
-              onPressed: () {
-                _showAllReviews();
-              },
-              child: Text(
-                'Voir tous les avis (${reviewState.stats!.totalReviews})',
-                style: const TextStyle(fontSize: 12),
+        // Barre stats avec cache individuel
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceVariant
+                .withOpacity(0.3),
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).dividerColor.withOpacity(0.5),
               ),
             ),
           ),
+          child: Row(
+            children: [
+              if (_isLoadingStats) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                const Text('Chargement...'),
+              ] else if (_cachedStats != null && _cachedStats!.totalReviews > 0) ...[
+                CompactRating(
+                  averageRating: _cachedStats!.averageRating,
+                  totalReviews: _cachedStats!.totalReviews,
+                  starSize: 16,
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Icon(Icons.star_border, size: 16, color: Colors.grey.shade400),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Aucun avis',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const Spacer(),
+              if (_cachedStats != null && _cachedStats!.totalReviews > 0) ...[
+                TextButton.icon(
+                  onPressed: _toggleReviews,
+                  icon: Icon(
+                    _showReviews ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _showReviews ? 'Masquer' : 'Voir avis',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              _buildRateButton(),
+            ],
+          ),
+        ),
+
+        // Liste des avis avec cache individuel
+        if (_showReviews) ...[
+          if (_isLoadingReviews) ...[
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ] else if (_errorMessage != null) ...[
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Erreur: $_errorMessage',
+                style: TextStyle(color: Colors.red.shade600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ] else if (_cachedReviews.isEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Aucun avis disponible pour ce plat',
+                  textAlign: TextAlign.center),
+            ),
+          ] else ...[
+            Column(
+              children: [
+                ..._cachedReviews.take(3).map(
+                      (review) => CompactReviewCard(
+                    review: review,
+                    onTap: _showAllReviews,
+                  ),
+                ),
+                if (_cachedReviews.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: TextButton(
+                      onPressed: _showAllReviews,
+                      child: Text(
+                        'Voir tous les avis (${_cachedReviews.length})',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
       ],
     );
   }
 
-  Widget _buildRateButton(ReviewState reviewState) {
+  void _toggleReviews() {
+    setState(() => _showReviews = !_showReviews);
+
+    if (_showReviews) {
+      if (!_hasLoadedReviews) {
+        _loadReviews();
+      }
+      _checkUserReview();
+    }
+  }
+
+  Widget _buildRateButton() {
     return BlocBuilder<UserMeBloc, UserMeState>(
       builder: (context, userState) {
         if (userState.userMe == null) {
@@ -485,9 +577,7 @@ class _DishTileState extends State<_DishTile> {
                   content: const Text('Connectez-vous pour laisser un avis'),
                   action: SnackBarAction(
                     label: 'Se connecter',
-                    onPressed: () {
-                      context.go(AppRoute.login.path);
-                    },
+                    onPressed: () => context.go(AppRoute.login.path),
                   ),
                 ),
               );
@@ -502,9 +592,7 @@ class _DishTileState extends State<_DishTile> {
           );
         }
 
-        final userHasReviewedThisDish = _checkIfUserReviewedThisDish(reviewState, userState.userMe!.id);
-
-        if (userHasReviewedThisDish) {
+        if (_userHasReviewed) {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -515,11 +603,7 @@ class _DishTileState extends State<_DishTile> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.check_circle,
-                  size: 14,
-                  color: Colors.green.shade700,
-                ),
+                Icon(Icons.check_circle, size: 14, color: Colors.green.shade700),
                 const SizedBox(width: 4),
                 Text(
                   'Noté',
@@ -535,18 +619,9 @@ class _DishTileState extends State<_DishTile> {
         }
 
         return ElevatedButton.icon(
-          onPressed: reviewState.isCreating ? null : () => _showReviewForm(),
-          icon: reviewState.isCreating
-              ? const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-              : const Icon(Icons.star, size: 16),
-          label: Text(
-            reviewState.isCreating ? 'Envoi...' : 'Noter',
-            style: const TextStyle(fontSize: 12),
-          ),
+          onPressed: _showReviewForm,
+          icon: const Icon(Icons.star, size: 16),
+          label: const Text('Noter', style: TextStyle(fontSize: 12)),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             minimumSize: Size.zero,
@@ -557,44 +632,47 @@ class _DishTileState extends State<_DishTile> {
     );
   }
 
-  bool _checkIfUserReviewedThisDish(ReviewState reviewState, String userId) {
-    return reviewState.reviews.any((review) =>
-    review.resourceType == ResourceType.DISH &&
-        review.resourceId == widget.dish.id &&
-        review.userId == userId
-    );
-  }
-
   void _showReviewForm() {
     final userState = context.read<UserMeBloc>().state;
     if (userState.userMe == null) return;
 
-    context.read<ReviewBloc>().add(CheckUserReviewEvent(
-      userId: userState.userMe!.id,
-      resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
-    ));
+    final dishIdStr = widget.dish.id!.toString();
 
     ReviewFormModal.show(
       context: context,
       resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
+      resourceId: dishIdStr,
       userId: userState.userMe!.id,
       resourceName: widget.dish.name,
-      onSubmit: (createReview) {
-        context.read<ReviewBloc>().add(CreateReviewEvent(createReview));
+      onSubmit: (createReview) async {
         Navigator.of(context).pop();
 
-        Future.delayed(const Duration(milliseconds: 500), () {
-          context.read<ReviewBloc>().add(LoadReviewStatsEvent(
-            resourceType: ResourceType.DISH,
-            resourceId: widget.dish.id!,
-          ));
+        // Créer l'avis via le repository directement
+        try {
+          final reviewRepository = context.read<ReviewBloc>().reviewRepository;
+          await reviewRepository.createReview(createReview);
 
+          // Recharger les données de ce plat
+          setState(() {
+            _hasLoadedStats = false;
+            _hasLoadedReviews = false;
+            _hasCheckedUserReview = false;
+          });
+
+          _loadStats();
           if (_showReviews) {
-            _loadReviewsForThisDish();
+            _loadReviews();
           }
-        });
+          _checkUserReview();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Avis ajouté avec succès!')),
+          );
+        } catch (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: ${error.toString()}')),
+          );
+        }
       },
     );
   }
@@ -603,9 +681,7 @@ class _DishTileState extends State<_DishTile> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => _DishReviewsPage(
-          dish: widget.dish,
-        ),
+        builder: (context) => _DishReviewsPage(dish: widget.dish),
       ),
     );
   }
@@ -628,13 +704,15 @@ class _DishTileState extends State<_DishTile> {
       "MOLLUSCS": "Mollusques",
     };
     return allergens
-        .map((a) => Chip(
-      label: Text(labels[a] ?? a, style: const TextStyle(fontSize: 12)),
-      visualDensity:
-      const VisualDensity(horizontal: -4, vertical: -4),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      side: BorderSide.none,
-    ))
+        .map(
+          (a) => Chip(
+        label: Text(labels[a] ?? a, style: const TextStyle(fontSize: 12)),
+        visualDensity:
+        const VisualDensity(horizontal: -4, vertical: -4),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        side: BorderSide.none,
+      ),
+    )
         .toList();
   }
 
@@ -667,7 +745,6 @@ class _DishTileState extends State<_DishTile> {
 
 class _DishReviewsPage extends StatefulWidget {
   final Dish dish;
-
   const _DishReviewsPage({required this.dish});
 
   @override
@@ -678,90 +755,137 @@ class _DishReviewsPageState extends State<_DishReviewsPage> {
   @override
   void initState() {
     super.initState();
+    final dishIdStr = widget.dish.id!.toString();
+    final bloc = context.read<ReviewBloc>();
 
-    context.read<ReviewBloc>().add(LoadReviewStatsEvent(
+    bloc.add(SetCurrentDishEvent(dishIdStr));
+    bloc.add(LoadReviewStatsEvent(
       resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
+      resourceId: dishIdStr,
     ));
-
-    context.read<ReviewBloc>().add(LoadReviewsEvent(
-      resourceType: ResourceType.DISH,
-      resourceId: widget.dish.id!,
-      size: 20,
-    ));
+    bloc.add(LoadDishReviewsEvent(dishId: dishIdStr, size: 20));
   }
 
   @override
   Widget build(BuildContext context) {
+    final dishIdStr = widget.dish.id!.toString();
+
     return CustomScaffold(
       title: 'Avis - ${widget.dish.name}',
-      body: BlocBuilder<ReviewBloc, ReviewState>(
-        builder: (context, state) {
-          final dishReviews = state.reviews.where((review) {
-            return review.resourceType == ResourceType.DISH &&
-                review.resourceId == widget.dish.id;
-          }).toList();
-
-          return Column(
-            children: [
-              if (state.stats != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CompactRating(
-                          averageRating: state.stats!.averageRating,
-                          totalReviews: state.stats!.totalReviews,
-                          starSize: 20,
-                        ),
+      body: Column(
+        children: [
+          // En-tête avec stats du plat courant
+          BlocSelector<ReviewBloc, ReviewState, ReviewStats?>(
+            selector: (state) =>
+            state.currentDishId == dishIdStr ? state.stats : null,
+            builder: (context, stats) {
+              if (stats == null) return const SizedBox.shrink();
+              return Container(
+                padding: const EdgeInsets.all(16),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceVariant
+                    .withOpacity(0.3),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CompactRating(
+                        averageRating: stats.averageRating,
+                        totalReviews: stats.totalReviews,
+                        starSize: 20,
                       ),
-                      Text(
-                        '${state.stats!.totalReviews} avis',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                ),
-
-              Expanded(
-                child: state.isLoading && dishReviews.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : dishReviews.isEmpty
-                    ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
-                      'Aucun avis pour ce plat',
-                      style: TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                )
-                    : RefreshIndicator(
+                    Text(
+                      '${stats.totalReviews} avis',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          // Liste complète avec refresh
+          Expanded(
+            child: BlocSelector<ReviewBloc, ReviewState, ReviewListData>(
+              selector: (state) {
+                final isCurrentDish = state.currentDishId == dishIdStr;
+                return ReviewListData(
+                  reviews: isCurrentDish ? state.reviews : const [],
+                  isLoading: isCurrentDish ? state.isLoading : false,
+                  hasError: isCurrentDish ? state.hasError : false,
+                  shouldShow: true,
+                  errorMessage: isCurrentDish ? state.errorMessage : null,
+                );
+              },
+              builder: (context, data) {
+                if (data.isLoading && data.reviews.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (data.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Erreur: ${data.errorMessage ?? "Erreur inconnue"}',
+                            style: TextStyle(color: Colors.red.shade600),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              final bloc = context.read<ReviewBloc>();
+                              bloc.add(SetCurrentDishEvent(dishIdStr));
+                              bloc.add(
+                                  LoadDishReviewsEvent(dishId: dishIdStr, size: 20));
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Réessayer'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (data.reviews.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'Aucun avis pour ce plat',
+                        style: TextStyle(fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
                   onRefresh: () async {
-                    context.read<ReviewBloc>().add(LoadReviewsEvent(
-                      resourceType: ResourceType.DISH,
-                      resourceId: widget.dish.id!,
-                      size: 20,
-                    ));
+                    final bloc = context.read<ReviewBloc>();
+                    bloc.add(SetCurrentDishEvent(dishIdStr));
+                    bloc.add(LoadDishReviewsEvent(dishId: dishIdStr, size: 20));
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    itemCount: dishReviews.length,
+                    itemCount: data.reviews.length,
                     itemBuilder: (context, index) {
                       return ReviewCard(
-                        review: dishReviews[index],
+                        review: data.reviews[index],
                         margin: const EdgeInsets.symmetric(vertical: 4),
                       );
                     },
                   ),
-                ),
-              ),
-            ],
-          );
-        },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

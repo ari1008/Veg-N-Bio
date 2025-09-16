@@ -95,6 +95,11 @@ export default function Navbar() {
                             </ul>
                         </div>
 
+                        {/* Admin Reviews Moderation Button */}
+                        <Link to="/admin/reviews/moderation" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
+                            📝 Modération Avis
+                        </Link>
+
                         <LogoutButton/>
                         <Link to="/event-requests" className="btn btn-outline btn-sm text-primary border-primary hover:bg-primary hover:text-white">
                             🎭 Événements

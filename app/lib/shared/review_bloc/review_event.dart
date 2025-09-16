@@ -90,3 +90,25 @@ class ResetReviewsEvent extends ReviewEvent {
   @override
   String toString() => 'ResetReviewsEvent';
 }
+
+class SetCurrentDishEvent extends ReviewEvent {
+  final String? dishId;
+  const SetCurrentDishEvent(this.dishId);
+
+  @override
+  String toString() => 'SetCurrentDishEvent { dishId: $dishId }';
+}
+
+/// NEW: charger rapidement les avis d’un plat spécifique (taille réduite)
+class LoadDishReviewsEvent extends ReviewEvent {
+  final String dishId;
+  final int size;
+
+  const LoadDishReviewsEvent({
+    required this.dishId,
+    this.size = 3,
+  });
+
+  @override
+  String toString() => 'LoadDishReviewsEvent { dishId: $dishId, size: $size }';
+}

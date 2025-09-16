@@ -61,6 +61,11 @@ class ApiReviewDataSource implements ReviewDataSource {
         int size = 20,
       }) async {
     try {
+      print('📡 API CALL - getReviews');
+      print('   - resourceType: $resourceType');
+      print('   - resourceId: $resourceId');
+      print('   - page: $page, size: $size');
+
       final response = await _dio.get(
         "${dotenv.env['BASE_URL']}/reviews/${resourceType.name}/$resourceId",
         queryParameters: {
@@ -69,17 +74,24 @@ class ApiReviewDataSource implements ReviewDataSource {
         },
       );
 
+      print('📡 API RESPONSE - getReviews');
+      print('   - status: ${response.statusCode}');
+      print('   - data: ${response.data}');
       if (response.statusCode != 200) {
         throw Exception("Erreur lors de la récupération des avis");
       }
+      PaginatedReviews paginated = PaginatedReviews.fromJson(response.data);
+      print('   - parsed content length: ${paginated.content.length}');
 
-      return PaginatedReviews.fromJson(response.data);
+      return paginated;
     } on DioException catch (e) {
+      print('📡 API ERROR - getReviews: $e');
       if (e.response?.statusCode == 404) {
         throw Exception("Ressource non trouvée");
       }
       throw Exception("Erreur réseau: ${e.message}");
     } catch (e) {
+      print('📡 API ERROR - getReviews: $e');
       throw Exception("Erreur inattendue: $e");
     }
   }
