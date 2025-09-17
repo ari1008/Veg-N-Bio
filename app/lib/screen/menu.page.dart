@@ -44,7 +44,6 @@ class _MenuPageState extends State<MenuPage> {
   }
 
   Future<void> _refresh() async {
-    // Reset le plat courant pour éviter des rebuilds inutiles
     context.read<ReviewBloc>().add(const SetCurrentDishEvent(null));
     context.read<MenuBloc>().add(const FetchMenuEvent());
     ScaffoldMessenger.of(context).showSnackBar(
@@ -206,7 +205,6 @@ class _DishTile extends StatefulWidget {
 class _DishTileState extends State<_DishTile> {
   bool _showReviews = false;
 
-  // NOUVELLE APPROCHE: Cache individuel par plat
   ReviewStats? _cachedStats;
   List<Review> _cachedReviews = [];
   bool _isLoadingStats = false;
@@ -436,7 +434,6 @@ class _DishTileState extends State<_DishTile> {
   Widget _buildReviewSection() {
     return Column(
       children: [
-        // Barre stats avec cache individuel
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
@@ -505,7 +502,6 @@ class _DishTileState extends State<_DishTile> {
           ),
         ),
 
-        // Liste des avis avec cache individuel
         if (_showReviews) ...[
           if (_isLoadingReviews) ...[
             const Padding(
@@ -647,12 +643,10 @@ class _DishTileState extends State<_DishTile> {
       onSubmit: (createReview) async {
         Navigator.of(context).pop();
 
-        // Créer l'avis via le repository directement
         try {
           final reviewRepository = context.read<ReviewBloc>().reviewRepository;
           await reviewRepository.createReview(createReview);
 
-          // Recharger les données de ce plat
           setState(() {
             _hasLoadedStats = false;
             _hasLoadedReviews = false;
@@ -774,7 +768,6 @@ class _DishReviewsPageState extends State<_DishReviewsPage> {
       title: 'Avis - ${widget.dish.name}',
       body: Column(
         children: [
-          // En-tête avec stats du plat courant
           BlocSelector<ReviewBloc, ReviewState, ReviewStats?>(
             selector: (state) =>
             state.currentDishId == dishIdStr ? state.stats : null,
@@ -805,7 +798,6 @@ class _DishReviewsPageState extends State<_DishReviewsPage> {
             },
           ),
 
-          // Liste complète avec refresh
           Expanded(
             child: BlocSelector<ReviewBloc, ReviewState, ReviewListData>(
               selector: (state) {
