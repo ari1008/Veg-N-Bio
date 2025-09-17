@@ -7,12 +7,13 @@ import Navbar from './component/navbar.tsx';
 import Footer from './component/footer.tsx';
 import { FormField } from './component/FormField.tsx';
 import { useGetAllRestaurant } from '../api/restaurant/hook/useRestaurant.ts';
-import { useAllUsers } from '../api/auth/hook/hook.ts';
+import { useUserSearch } from '../api/auth/hook/hook.ts';
 import { useMeetingRoomsByRestaurant, useAvailableMeetingRooms } from '../api/meettingroom/hook/hook.ts';
 import {useCreateEventRequest} from "../api/event/hook/hook.ts";
 import {type CreateEventRequestRequest, createEventRequestSchema} from "../api/event/dto/dto.ts";
 import {EVENT_TYPE_LABELS} from "../api/event/utils.ts";
 import {EventDateTimeInput} from "./component/EventDateTimeInput.component.tsx";
+import type {UserSummary} from "../api/auth/dto/dto.ts";
 
 
 const EventDurationSuggestions = ({ startTime, onDurationSelect }) => {
@@ -94,12 +95,13 @@ const extractEventErrorMessage = (error: any): string => {
 export const CreateEventRequestPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedRestaurant, setSelectedRestaurant] = useState('');
+    const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
 
     const createMutation = useCreateEventRequest();
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
-    const { data: users = [], isLoading: loadingUsers } = useAllUsers();
+    const { users, isLoading: loadingUsers, searchTerm, setSearchTerm, hasSearchTerm } = useUserSearch(20);
 
     const { data: meetingRooms = [], isLoading: loadingMeetingRooms } = useMeetingRoomsByRestaurant(selectedRestaurant);
     const { data: availableMeetingRooms = [] } = useAvailableMeetingRooms({
@@ -122,9 +124,20 @@ export const CreateEventRequestPage: React.FC = () => {
         mode: 'onChange',
         defaultValues: {
             numberOfPeople: 1,
-            type: 'AUTRE'
+            type: 'AUTRE',
+            customerId: ''
         }
     });
+
+    // Mettre à jour le formulaire quand un utilisateur est sélectionné
+    useEffect(() => {
+        if (selectedUser) {
+            setValue('customerId', selectedUser.id);
+            clearErrors('customerId');
+        } else {
+            setValue('customerId', '');
+        }
+    }, [selectedUser, setValue, clearErrors]);
 
     useEffect(() => {
         loadRestaurants();
@@ -134,7 +147,6 @@ export const CreateEventRequestPage: React.FC = () => {
     const watchedTitle = watch('title');
     const watchedStartTime = watch('startTime');
     const watchedEndTime = watch('endTime');
-    const watchedCustomerId = watch('customerId');
     const watchedRestaurantId = watch('restaurantId');
     const watchedMeetingRoomId = watch('meetingRoomId');
     const watchedNumberOfPeople = watch('numberOfPeople');
@@ -188,7 +200,7 @@ export const CreateEventRequestPage: React.FC = () => {
                 return;
             }
 
-            if (!data.customerId || data.customerId === '') {
+            if (!selectedUser) {
                 setError('customerId', {
                     type: 'manual',
                     message: 'Veuillez sélectionner un client'
@@ -214,6 +226,7 @@ export const CreateEventRequestPage: React.FC = () => {
 
             const cleanData = {
                 ...data,
+                customerId: selectedUser.id,
                 title: data.title.trim(),
                 description: data.description.trim(),
                 specialRequests: data.specialRequests?.trim() || undefined,
@@ -253,7 +266,7 @@ export const CreateEventRequestPage: React.FC = () => {
     const canSubmit = !isSubmitting &&
         !createMutation.isPending &&
         watchedTitle &&
-        watchedCustomerId &&
+        selectedUser &&
         watchedRestaurantId &&
         watchedStartTime &&
         watchedEndTime &&
@@ -465,23 +478,89 @@ export const CreateEventRequestPage: React.FC = () => {
                                     )}
                                 </FormField>
 
-                                {/* Client */}
+                                {/* Client avec barre de recherche */}
                                 <FormField label="Client *" error={errors.customerId?.message}>
-                                    {loadingUsers ? (
-                                        <div className="skeleton h-12 w-full"></div>
-                                    ) : (
-                                        <select
-                                            {...register('customerId')}
-                                            className={`select select-bordered w-full ${errors.customerId ? 'select-error' : ''}`}
-                                        >
-                                            <option value="">Sélectionner un client</option>
-                                            {users.map((user) => (
-                                                <option key={user.id} value={user.id}>
-                                                    {user.firstName} {user.lastName} - {user.email}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    )}
+                                    <div className="space-y-4">
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Rechercher par nom ou email..."
+                                            className="input input-bordered w-full"
+                                        />
+
+                                        {loadingUsers ? (
+                                            <div className="flex justify-center py-4">
+                                                <span className="loading loading-spinner loading-md"></span>
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-60 overflow-y-auto space-y-2">
+                                                {users.length === 0 ? (
+                                                    <div className="text-center py-8 text-base-content/50">
+                                                        {hasSearchTerm ?
+                                                            `Aucun client trouvé pour "${searchTerm}"` :
+                                                            "Tapez pour rechercher un client"
+                                                        }
+                                                    </div>
+                                                ) : (
+                                                    users.map((user) => (
+                                                        <div
+                                                            key={user.id}
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                clearErrors('customerId');
+                                                            }}
+                                                            className={`card bg-base-200 shadow cursor-pointer transition-colors ${
+                                                                selectedUser?.id === user.id ?
+                                                                    'bg-primary text-primary-content' :
+                                                                    'hover:bg-base-300'
+                                                            }`}
+                                                        >
+                                                            <div className="card-body p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="avatar placeholder">
+                                                                        <div className="bg-neutral text-neutral-content rounded-full w-10">
+                                                                            <span className="text-xl">{user.fullName.charAt(0)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold">{user.fullName}</div>
+                                                                        <div className="text-sm opacity-70">{user.email}</div>
+                                                                    </div>
+                                                                    {selectedUser?.id === user.id && (
+                                                                        <div className="ml-auto">
+                                                                            <span className="text-2xl">✓</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {selectedUser && (
+                                            <div className="alert alert-success">
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>✓</span>
+                                                        <span>Client sélectionné : <strong>{selectedUser.fullName}</strong></span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedUser(null);
+                                                            setSearchTerm('');
+                                                        }}
+                                                        className="btn btn-ghost btn-xs"
+                                                    >
+                                                        Changer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </FormField>
 
                                 {/* Téléphone de contact */}
@@ -556,12 +635,6 @@ export const CreateEventRequestPage: React.FC = () => {
                                     </div>
                                 )}
 
-                                {users.length === 0 && !loadingUsers && (
-                                    <div className="alert alert-warning">
-                                        <span>Aucun client disponible pour le moment.</span>
-                                    </div>
-                                )}
-
                                 {selectedRestaurant && meetingRooms.length === 0 && !loadingMeetingRooms && (
                                     <div className="alert alert-info">
                                         <span>Ce restaurant n'a pas de salles de réunion configurées.</span>
@@ -605,10 +678,10 @@ export const CreateEventRequestPage: React.FC = () => {
                                             <input
                                                 type="checkbox"
                                                 className="checkbox checkbox-xs"
-                                                checked={!!watchedCustomerId}
+                                                checked={!!selectedUser}
                                                 readOnly
                                             />
-                                            <span className={`text-sm ${watchedCustomerId ? 'text-success' : 'text-base-content/60'}`}>
+                                            <span className={`text-sm ${selectedUser ? 'text-success' : 'text-base-content/60'}`}>
                                                 Client sélectionné
                                             </span>
                                         </div>
@@ -690,7 +763,6 @@ export const CreateEventRequestPage: React.FC = () => {
                                         )}
                                     </button>
                                 </div>
-
 
                             </form>
                         </div>

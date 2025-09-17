@@ -10,8 +10,9 @@ import type { CreateReservationRequest } from '../api/reservation/dto/dto.ts';
 import { createReservationSchema } from '../api/reservation/dto/dto.ts';
 import { useCreateReservation, useRestaurantAvailability } from '../api/reservation/hook/hook.ts';
 import { useGetAllRestaurant } from '../api/restaurant/hook/useRestaurant.ts';
-import { useAllUsers } from '../api/auth/hook/hook.ts';
+import { useUserSearch } from '../api/auth/hook/hook.ts';
 import {DateTimeInput} from "./component/DateTimeInput.component.tsx";
+import type {UserSummary} from "../api/auth/dto/dto.ts";
 
 
 const DurationSuggestions = ({ startTime, onDurationSelect }) => {
@@ -93,23 +94,20 @@ const extractErrorMessage = (error: any): string => {
 export const CreateReservationPage: React.FC = () => {
     const navigate = useNavigate();
     const [selectedRestaurant, setSelectedRestaurant] = useState('');
+    const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
     const [startTime, setStartTime] = useState('');
     const [endTime, setEndTime] = useState('');
 
     const createMutation = useCreateReservation();
     const { data: availability } = useRestaurantAvailability(selectedRestaurant);
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
-    const { data: users = [], isLoading: loadingUsers } = useAllUsers();
+    const { users, isLoading: loadingUsers, searchTerm, setSearchTerm, hasSearchTerm } = useUserSearch(20);
 
     const selectedRestaurantData = restaurants.find(r => r.id === selectedRestaurant);
     const meetingRooms = selectedRestaurantData?.meetingRooms || [];
     const loadingMeetingRooms = false;
     const availableMeetingRooms = meetingRooms;
     const loadingAvailability = false;
-
-    useEffect(() => {
-        loadRestaurants();
-    }, [loadRestaurants]);
 
     const {
         register,
@@ -125,9 +123,24 @@ export const CreateReservationPage: React.FC = () => {
         mode: 'onChange',
         defaultValues: {
             type: 'RESTAURANT_FULL',
-            numberOfPeople: 1
+            numberOfPeople: 1,
+            customerId: ''
         }
     });
+
+    // Mettre à jour le formulaire quand un utilisateur est sélectionné
+    useEffect(() => {
+        if (selectedUser) {
+            setValue('customerId', selectedUser.id);
+            clearErrors('customerId');
+        } else {
+            setValue('customerId', '');
+        }
+    }, [selectedUser, setValue, clearErrors]);
+
+    useEffect(() => {
+        loadRestaurants();
+    }, [loadRestaurants]);
 
     const watchedType = watch('type');
     const watchedStartTime = watch('startTime');
@@ -181,7 +194,7 @@ export const CreateReservationPage: React.FC = () => {
 
     const onSubmit = async (data: CreateReservationRequest) => {
         try {
-            if (!data.customerId || data.customerId === '') {
+            if (!selectedUser) {
                 setError('customerId', {
                     type: 'manual',
                     message: 'Veuillez sélectionner un client'
@@ -207,7 +220,7 @@ export const CreateReservationPage: React.FC = () => {
 
             const cleanData = {
                 ...data,
-                customerId: data.customerId === '' ? undefined : data.customerId,
+                customerId: selectedUser.id,
                 meetingRoomId: data.meetingRoomId === '' ? undefined : data.meetingRoomId,
                 startTime: data.startTime ? (data.startTime.includes(':00') ? data.startTime : `${data.startTime}:00`) : undefined,
                 endTime: data.endTime ? (data.endTime.includes(':00') ? data.endTime : `${data.endTime}:00`) : undefined
@@ -241,7 +254,7 @@ export const CreateReservationPage: React.FC = () => {
 
     const canSubmit = !isSubmitting &&
         !createMutation.isPending &&
-        watchedCustomerId &&
+        selectedUser &&
         watchedRestaurantId &&
         watchedStartTime &&
         watchedEndTime &&
@@ -463,26 +476,89 @@ export const CreateReservationPage: React.FC = () => {
                                     )}
                                 </FormField>
 
-                                {/* Client */}
+                                {/* Client avec barre de recherche */}
                                 <FormField label="Client *" error={errors.customerId?.message}>
-                                    {loadingUsers ? (
-                                        <div className="flex items-center justify-center p-4">
-                                            <span className="loading loading-spinner loading-md"></span>
-                                            <span className="ml-2">Chargement des clients...</span>
-                                        </div>
-                                    ) : (
-                                        <select
-                                            {...register('customerId')}
-                                            className={`select select-bordered w-full ${errors.customerId ? 'select-error' : ''}`}
-                                        >
-                                            <option value="">Sélectionnez un client</option>
-                                            {users.map((user) => (
-                                                <option key={user.id} value={user.id}>
-                                                    {user.fullName} - {user.email}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    )}
+                                    <div className="space-y-4">
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            placeholder="Rechercher par nom ou email..."
+                                            className="input input-bordered w-full"
+                                        />
+
+                                        {loadingUsers ? (
+                                            <div className="flex justify-center py-4">
+                                                <span className="loading loading-spinner loading-md"></span>
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-60 overflow-y-auto space-y-2">
+                                                {users.length === 0 ? (
+                                                    <div className="text-center py-8 text-base-content/50">
+                                                        {hasSearchTerm ?
+                                                            `Aucun client trouvé pour "${searchTerm}"` :
+                                                            "Tapez pour rechercher un client"
+                                                        }
+                                                    </div>
+                                                ) : (
+                                                    users.map((user) => (
+                                                        <div
+                                                            key={user.id}
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                clearErrors('customerId');
+                                                            }}
+                                                            className={`card bg-base-200 shadow cursor-pointer transition-colors ${
+                                                                selectedUser?.id === user.id ?
+                                                                    'bg-primary text-primary-content' :
+                                                                    'hover:bg-base-300'
+                                                            }`}
+                                                        >
+                                                            <div className="card-body p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="avatar placeholder">
+                                                                        <div className="bg-neutral text-neutral-content rounded-full w-10">
+                                                                            <span className="text-xl">{user.fullName.charAt(0)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-bold">{user.fullName}</div>
+                                                                        <div className="text-sm opacity-70">{user.email}</div>
+                                                                    </div>
+                                                                    {selectedUser?.id === user.id && (
+                                                                        <div className="ml-auto">
+                                                                            <span className="text-2xl">✓</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {selectedUser && (
+                                            <div className="alert alert-success">
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>✓</span>
+                                                        <span>Client sélectionné : <strong>{selectedUser.fullName}</strong></span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedUser(null);
+                                                            setSearchTerm('');
+                                                        }}
+                                                        className="btn btn-ghost btn-xs"
+                                                    >
+                                                        Changer
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </FormField>
 
                                 {/* Notes */}
@@ -532,12 +608,6 @@ export const CreateReservationPage: React.FC = () => {
                                     </div>
                                 )}
 
-                                {users.length === 0 && !loadingUsers && (
-                                    <div className="alert alert-warning">
-                                        <span>Aucun client disponible pour le moment.</span>
-                                    </div>
-                                )}
-
                                 {watchedType === 'MEETING_ROOM' && selectedRestaurant && meetingRooms.length === 0 && !loadingMeetingRooms && (
                                     <div className="alert alert-info">
                                         <span>Ce restaurant n'a pas de salles de réunion configurées.</span>
@@ -559,10 +629,10 @@ export const CreateReservationPage: React.FC = () => {
                                             <input
                                                 type="checkbox"
                                                 className="checkbox checkbox-xs"
-                                                checked={!!watchedCustomerId}
+                                                checked={!!selectedUser}
                                                 readOnly
                                             />
-                                            <span className={`text-sm ${watchedCustomerId ? 'text-success' : 'text-base-content/60'}`}>
+                                            <span className={`text-sm ${selectedUser ? 'text-success' : 'text-base-content/60'}`}>
                                                 Client sélectionné
                                             </span>
                                         </div>

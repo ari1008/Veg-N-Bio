@@ -199,7 +199,7 @@ const OrdersDashboard: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto p-6 space-y-6">
-            {/* Header avec boutons d'action */}
+            {/* Header avec bouton d'action */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold">Gestion des Commandes</h1>
@@ -229,22 +229,6 @@ const OrdersDashboard: React.FC = () => {
                         </svg>
                         Nouvelle Commande
                     </a>
-
-                    {/* Bouton Borne de Commande */}
-                    <a
-                        href="/kiosk-order"
-                        className="btn btn-success gap-2 shadow-lg"
-                    >
-                        <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        Borne de Commande
-                    </a>
                 </div>
             </div>
 
@@ -255,20 +239,14 @@ const OrdersDashboard: React.FC = () => {
                         <div className="text-6xl mb-4">🛒</div>
                         <h2 className="card-title justify-center text-2xl mb-2">Aucune commande pour le moment</h2>
                         <p className="text-base-content/70 mb-6">
-                            Commencez par créer votre première commande avec notre borne intuitive !
+                            Commencez par créer votre première commande !
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                            <a
-                                href="/kiosk-order"
-                                className="btn btn-primary btn-lg gap-2"
-                            >
-                                🖥️ Utiliser la Borne de Commande
-                            </a>
+                        <div className="flex justify-center">
                             <a
                                 href="/create-order"
-                                className="btn btn-outline btn-lg gap-2"
+                                className="btn btn-primary btn-lg gap-2"
                             >
-                                ➕ Créer une Commande Manuelle
+                                ➕ Créer une Commande
                             </a>
                         </div>
                     </div>
@@ -323,12 +301,6 @@ const OrdersDashboard: React.FC = () => {
                         <div className="flex flex-wrap gap-4 items-center justify-between">
                             <h3 className="card-title">Actions rapides</h3>
                             <div className="flex flex-wrap gap-2">
-                                <a
-                                    href="/kiosk-order"
-                                    className="btn btn-success btn-sm gap-1"
-                                >
-                                    🖥️ Ouvrir la Borne
-                                </a>
                                 <a
                                     href="/create-order"
                                     className="btn btn-primary btn-sm gap-1"

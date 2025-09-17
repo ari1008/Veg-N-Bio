@@ -26,7 +26,7 @@ const KioskOrderPage = () => {
     const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
     const [guestName, setGuestName] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
-    const [isDelivery, setIsDelivery] = useState(false); // État pour la livraison
+    const [isDelivery, setIsDelivery] = useState(false);
 
     const { mutate: loadRestaurants, data: restaurants = [], isPending: loadingRestaurants } = useGetAllRestaurant();
     const { data: dishes = [], isLoading: loadingDishes } = useGetAllDishes();
@@ -38,7 +38,6 @@ const KioskOrderPage = () => {
         loadRestaurants();
     }, [loadRestaurants]);
 
-    // Réinitialiser l'option de livraison quand on change de restaurant
     useEffect(() => {
         if (selectedRestaurant) {
             const hasDeliveryFeature = selectedRestaurant.restaurantFeatures.includes('PLATEAUX_LIVRABLE');
@@ -179,7 +178,7 @@ const KioskOrderPage = () => {
                 idDish: item.dishId,
                 number: item.quantity
             })),
-            flatDelivered: isDelivery // Ajout du champ de livraison
+            flatDelivered: isDelivery
         };
 
         createOrder(orderData, {
@@ -191,7 +190,7 @@ const KioskOrderPage = () => {
                 setGuestName('');
                 setSelectedCategory('');
                 setSearchTerm('');
-                setIsDelivery(false); // Réinitialiser l'option de livraison
+                setIsDelivery(false);
                 alert(`🎉 Commande créée avec succès pour ${customerInfo.name} !\n${isDelivery ? '🚚 Commande à livrer' : '🏪 Commande à retirer sur place'}\nVotre numéro de commande vous sera communiqué à la caisse.`);
             },
             onError: (error: any) => {
@@ -201,7 +200,6 @@ const KioskOrderPage = () => {
         });
     };
 
-    // Vérifier si le restaurant sélectionné supporte la livraison
     const restaurantSupportsDelivery = selectedRestaurant?.restaurantFeatures.includes('PLATEAUX_LIVRABLE') || false;
 
     if (loadingRestaurants) {
@@ -273,7 +271,7 @@ const KioskOrderPage = () => {
             case 'menu':
                 return (
                     <div className="space-y-6">
-                        {/* Header avec restaurant sélectionné */}
+                        {/* Header avec restaurant sélectionné - MODIFIÉ */}
                         <div className="bg-primary text-primary-content p-4 rounded-lg">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -286,6 +284,16 @@ const KioskOrderPage = () => {
                                 <div className="text-right">
                                     <div className="text-lg font-bold">{getTotalItems()} articles</div>
                                     <div className="text-xl font-bold">{getTotalPrice().toFixed(2)}€</div>
+
+                                    {/* BOUTON PANIER INTÉGRÉ DANS LE HEADER */}
+                                    {cart.length > 0 && (
+                                        <button
+                                            onClick={goToNextStep}
+                                            className="btn btn-accent mt-2 btn-sm"
+                                        >
+                                            🛒 Voir le panier
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -298,7 +306,8 @@ const KioskOrderPage = () => {
                             >
                                 🍴 Tout
                             </button>
-                            {categories.map(category => (
+                            {/* Ordre logique des catégories */}
+                            {['ENTREE', 'PLAT', 'DESSERT', 'BOISSON'].filter(cat => categories.includes(cat)).map(category => (
                                 <button
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
@@ -315,7 +324,7 @@ const KioskOrderPage = () => {
                                 <span className="loading loading-spinner loading-lg"></span>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-24">
                                 {availableDishes
                                     .filter(dish => !selectedCategory || dish.category === selectedCategory)
                                     .map((dish) => (
@@ -355,20 +364,10 @@ const KioskOrderPage = () => {
                             </div>
                         )}
 
-                        {/* Bouton fixe en bas */}
-                        {cart.length > 0 && (
-                            <div className="fixed bottom-4 right-4 z-50">
-                                <button
-                                    onClick={goToNextStep}
-                                    className="btn btn-primary btn-lg shadow-xl"
-                                >
-                                    🛒 Panier ({getTotalItems()}) - {getTotalPrice().toFixed(2)}€
-                                </button>
-                            </div>
-                        )}
+                        {/* Suppression de tous les éléments de debug problématiques */}
 
-                        {/* Navigation */}
-                        <div className="flex gap-4 justify-center pb-20">
+                        {/* Navigation avec espacement pour la barre de panier */}
+                        <div className="flex gap-4 justify-center pb-4">
                             <button onClick={goToPreviousStep} className="btn btn-outline btn-lg">
                                 ← Changer de restaurant
                             </button>
@@ -593,43 +592,6 @@ const KioskOrderPage = () => {
                                                         </div>
                                                     ))
                                                 )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Client occasionnel */}
-                            <div className="card bg-base-100 shadow-xl">
-                                <div className="card-body">
-                                    <h3 className="card-title text-xl mb-4">👤 Client occasionnel</h3>
-
-                                    <div className="space-y-4">
-                                        <p className="text-sm opacity-70">
-                                            Pour les clients qui ne sont pas encore inscrits dans le système.
-                                        </p>
-
-                                        <input
-                                            type="text"
-                                            value={guestName}
-                                            onChange={(e) => {
-                                                setGuestName(e.target.value);
-                                                if (e.target.value.trim()) {
-                                                    setSelectedUser(null);
-                                                }
-                                            }}
-                                            placeholder="Nom du client occasionnel..."
-                                            className={`input input-bordered input-lg w-full ${
-                                                guestName.trim() && !selectedUser ? 'input-success' : ''
-                                            }`}
-                                        />
-
-                                        {guestName.trim() && !selectedUser && (
-                                            <div className="alert alert-success">
-                                                <div className="flex items-center gap-2">
-                                                    <span>✓</span>
-                                                    <span>Client occasionnel : <strong>{guestName}</strong></span>
-                                                </div>
                                             </div>
                                         )}
                                     </div>
