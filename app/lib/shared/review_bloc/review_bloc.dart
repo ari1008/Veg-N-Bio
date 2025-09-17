@@ -256,9 +256,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
       LoadDishReviewsEvent event,
       Emitter<ReviewState> emit,
       ) async {
-    print('🎯 LoadDishReviewsEvent received');
-    print('   - dishId: ${event.dishId}');
-    print('   - size: ${event.size}');
 
     emit(state.copyWith(
       status: ReviewStatus.loading,
@@ -274,9 +271,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
         size: event.size,
       );
 
-      print('🎯 LoadDishReviewsEvent success');
-      print('   - received ${paginated.content.length} reviews');
-
       emit(state.copyWith(
         status: ReviewStatus.success,
         reviews: paginated.content,
@@ -286,7 +280,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
         hasReachedMax: !paginated.hasNext,
       ));
     } catch (error) {
-      print('🎯 LoadDishReviewsEvent error: $error');
       emit(state.copyWith(
         status: ReviewStatus.failure,
         errorMessage: error.toString(),
