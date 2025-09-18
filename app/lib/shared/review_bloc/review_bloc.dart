@@ -27,7 +27,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     on<LoadDishReviewsEvent>(_onLoadDishReviews);
   }
 
-  /// Gestionnaire pour créer un avis
   Future<void> _onCreateReview(
       CreateReviewEvent event,
       Emitter<ReviewState> emit,
@@ -37,13 +36,12 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     try {
       final newReview = await _reviewRepository.createReview(event.createReview);
 
-      // FIXED: Only update the reviews list if it's for the current dish
       final shouldUpdateList = state.currentDishId == event.createReview.resourceId;
 
       emit(state.copyWith(
         status: ReviewStatus.created,
         lastCreatedReview: newReview,
-        userHasReviewed: true, // FIXED: Set to true after creating review
+        userHasReviewed: true,
         reviews: shouldUpdateList ? [newReview, ...state.reviews] : state.reviews,
         totalElements: shouldUpdateList ? state.totalElements + 1 : state.totalElements,
       ));
@@ -70,7 +68,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     }
 
     try {
-      // Charger les avis et les stats en parallèle
       final futures = await Future.wait([
         _reviewRepository.getReviews(
           event.resourceType,
@@ -104,7 +101,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     }
   }
 
-  /// Gestionnaire pour charger plus d'avis (pagination)
   Future<void> _onLoadMoreReviews(
       LoadMoreReviewsEvent event,
       Emitter<ReviewState> emit,
@@ -135,7 +131,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     }
   }
 
-  /// Gestionnaire pour charger les statistiques uniquement
   Future<void> _onLoadReviewStats(
       LoadReviewStatsEvent event,
       Emitter<ReviewState> emit,
@@ -148,12 +143,10 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
 
       emit(state.copyWith(stats: stats));
     } catch (error) {
-      // On ne change pas le statut pour les stats, juste on log l'erreur
       emit(state.copyWith(errorMessage: error.toString()));
     }
   }
 
-  /// Gestionnaire pour vérifier si l'utilisateur a déjà laissé un avis
   Future<void> _onCheckUserReview(
       CheckUserReviewEvent event,
       Emitter<ReviewState> emit,
@@ -167,12 +160,10 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
 
       emit(state.copyWith(userHasReviewed: hasReviewed));
     } catch (error) {
-      // Si erreur, on assume que l'utilisateur n'a pas d'avis
       emit(state.copyWith(userHasReviewed: false));
     }
   }
 
-  /// Gestionnaire pour réinitialiser l'état
   Future<void> _onResetReviews(
       ResetReviewsEvent event,
       Emitter<ReviewState> emit,
@@ -180,9 +171,7 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     emit(const ReviewState());
   }
 
-  /// Méthodes helper pour l'UI
 
-  /// Recharge les avis (pull-to-refresh)
   void refreshReviews(ResourceType resourceType, String resourceId) {
     add(LoadReviewsEvent(
       resourceType: resourceType,
@@ -191,7 +180,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     ));
   }
 
-  /// Charge la page suivante
   void loadNextPage(ResourceType resourceType, String resourceId) {
     if (state.canLoadMore) {
       add(LoadMoreReviewsEvent(
@@ -202,13 +190,11 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     }
   }
 
-  /// Initialise les données pour une ressource
   void initializeForResource({
     required String userId,
     required ResourceType resourceType,
     required String resourceId,
   }) {
-    // Charger les avis et vérifier si l'user a déjà un avis
     add(LoadReviewsEvent(
       resourceType: resourceType,
       resourceId: resourceId,
@@ -221,7 +207,6 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     ));
   }
 
-  /// Crée un avis et rafraîchit automatiquement
   void createReviewAndRefresh({
     required CreateReview createReview,
     required ResourceType resourceType,
@@ -229,14 +214,12 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
   }) {
     add(CreateReviewEvent(createReview));
 
-    // Après création, on peut rafraîchir les stats
     add(LoadReviewStatsEvent(
       resourceType: resourceType,
       resourceId: resourceId,
     ));
   }
 
-  // FIXED: définir le plat courant (et vider la liste si on change)
   Future<void> _onSetCurrentDish(
       SetCurrentDishEvent event,
       Emitter<ReviewState> emit,
@@ -245,13 +228,11 @@ class ReviewBloc extends Bloc<ReviewEvent, ReviewState> {
     emit(state.copyWith(
       currentDishId: event.dishId,
       reviews: changed ? <Review>[] : state.reviews,
-      userHasReviewed: changed ? false : state.userHasReviewed, // FIXED: Reset when changing dish
-      stats: changed ? null : state.stats, // FIXED: Reset stats when changing dish
+      userHasReviewed: changed ? false : state.userHasReviewed,
+      stats: changed ? null : state.stats,
     ));
   }
 
-  // FIXED: charger un petit lot d'avis pour UN plat (aperçu)
-  // Dans _onLoadDishReviews, ajoutez des logs :
   Future<void> _onLoadDishReviews(
       LoadDishReviewsEvent event,
       Emitter<ReviewState> emit,

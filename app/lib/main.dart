@@ -16,6 +16,7 @@ import 'package:app/shared/user_me_bloc/user_me_bloc.dart';
 import 'package:app/shared/user_validation_bloc/user_validation_bloc.dart';
 import 'package:app/utils/route.dart';
 import 'package:app/utils/session_manager.dart';
+import 'package:app/utils/dio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -73,48 +74,53 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ],
-      child: MaterialApp.router(
-        routerConfig: router,
-        title: 'WL Tracker',
-        theme: ThemeData.light().copyWith(
-          scaffoldBackgroundColor: Colors.white,
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            iconTheme: IconThemeData(color: Colors.black),
-            titleTextStyle: TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          inputDecorationTheme: const InputDecorationTheme(
-            labelStyle: TextStyle(color: Colors.black),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.black45),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.deepPurple),
-            ),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+      child: Builder(
+        builder: (context) {
+          setGlobalContext(context);
+          return MaterialApp.router(
+            routerConfig: router,
+            title: 'WL Tracker',
+            theme: ThemeData.light().copyWith(
+              scaffoldBackgroundColor: Colors.white,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.white,
+                iconTheme: IconThemeData(color: Colors.black),
+                titleTextStyle: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              inputDecorationTheme: const InputDecorationTheme(
+                labelStyle: TextStyle(color: Colors.black),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.black45),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.deepPurple),
+                ),
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.deepPurple,
+                ),
+              ),
+              textTheme: const TextTheme(
+                bodyLarge: TextStyle(color: Colors.black),
+                bodyMedium: TextStyle(color: Colors.black),
               ),
             ),
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.deepPurple,
-            ),
-          ),
-          textTheme: const TextTheme(
-            bodyLarge: TextStyle(color: Colors.black),
-            bodyMedium: TextStyle(color: Colors.black),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

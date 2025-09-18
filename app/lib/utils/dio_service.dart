@@ -3,7 +3,28 @@ import 'package:app/service/repository/auth_repository.dart';
 import 'package:app/utils/session_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 import '../app_exception.dart';
+import '../utils/app_route_enum.dart';
+
+
+BuildContext? _globalContext;
+
+void setGlobalContext(BuildContext context) {
+  _globalContext = context;
+}
+
+
+void _redirectToLogin() {
+  if (_globalContext != null) {
+    SessionManager.instance.clearTokens();
+    _globalContext!.go(AppRoute.login.path);
+    ScaffoldMessenger.of(_globalContext!).showSnackBar(
+      const SnackBar(content: Text("Session expirée, reconnectez-vous")),
+    );
+  }
+}
 
 Dio makeTheHeader() {
   final dio = Dio();
@@ -31,15 +52,26 @@ Future<Dio> makeTheHeaderWithAutoRefresh() async {
           expiresIn: connectionDto.expiresIn,
         );
       } catch (e) {
+        _redirectToLogin();
         throw AuthException();
       }
     } else {
+      _redirectToLogin();
       throw AuthException();
     }
   }
 
   final token = prefs.getString('accessToken');
   final dio = makeTheHeader();
+
+  dio.interceptors.add(InterceptorsWrapper(
+    onError: (error, handler) {
+      if (error.response?.statusCode == 401) {
+        _redirectToLogin();
+      }
+      handler.next(error);
+    },
+  ));
 
   if (token != null && token.isNotEmpty) {
     dio.options.headers['Authorization'] = 'Bearer $token';

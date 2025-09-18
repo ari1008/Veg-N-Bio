@@ -52,6 +52,12 @@ class SessionManager {
     await _prefs.remove('refreshToken');
     await _prefs.remove('expiresIn');
   }
+  Future<void> clearTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('accessToken');
+    await prefs.remove('refreshToken');
+    await prefs.remove('expiresIn');
+  }
 
   Future<void> clear() async => _prefs.clear();
 }
