@@ -1,11 +1,11 @@
-import 'package:app/service/auth_data_source/api_auth_data_source.dart';
-import 'package:app/service/repository/auth_repository.dart';
-import 'package:app/utils/session_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:vegbio/utils/session_manager.dart';
 import '../app_exception.dart';
+import '../service/auth_data_source/api_auth_data_source.dart';
+import '../service/repository/auth_repository.dart';
 import '../utils/app_route_enum.dart';
 
 

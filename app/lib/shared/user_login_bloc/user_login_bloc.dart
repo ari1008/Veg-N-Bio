@@ -1,7 +1,8 @@
-import 'package:app/model/user.dart';
-import 'package:app/service/repository/auth_repository.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
+
+import '../../model/user.dart';
+import '../../service/repository/auth_repository.dart';
 import '../../utils/session_manager.dart';
 
 part 'user_login_event.dart';
@@ -89,16 +90,13 @@ class UserLoginBloc extends Bloc<UserLoginEvent, UserLoginState> {
   ) async {
     emit(state.copyWith(status: UserLoginStatus.loading));
     try {
-      await authRepository.register(
-          User(
-          email: event.email,
-          username: event.username,
-          firstname: event.firstname,
-          lastname: event.lastname,
-          password: event.password,
-          )
-      );
-
+      await authRepository.register(User(
+        email: event.email,
+        username: event.username,
+        firstname: event.firstname,
+        lastname: event.lastname,
+        password: event.password,
+      ));
 
       emit(state.copyWith(status: UserLoginStatus.registrationSuccess));
     } catch (error) {

@@ -1,7 +1,8 @@
-import 'package:app/model/connection_dto.dart';
-import 'package:app/service/auth_data_source/auth_data_source.dart';
 
+
+import '../../model/connection_dto.dart';
 import '../../model/user.dart';
+import '../auth_data_source/auth_data_source.dart';
 
 class AuthRepository {
 

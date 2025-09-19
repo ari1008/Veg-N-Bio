@@ -1,5 +1,7 @@
-import 'package:app/model/dish.dart';
-import 'package:app/service/menu_data_source/api_menu_data_source.dart';
+
+
+import '../../model/dish.dart';
+import '../menu_data_source/api_menu_data_source.dart';
 
 class MenuRepository {
 

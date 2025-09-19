@@ -1,7 +1,8 @@
-import 'package:app/model/dish.dart';
-import 'package:app/service/repository/menu_repository.dart';
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
+
+import '../../model/dish.dart';
+import '../../service/repository/menu_repository.dart';
 
 part 'menu_event.dart';
 part 'menu_state.dart';

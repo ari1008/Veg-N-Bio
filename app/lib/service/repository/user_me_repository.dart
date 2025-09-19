@@ -1,7 +1,7 @@
 
 
-import 'package:app/model/UserMe.dart';
-import 'package:app/service/user_me_data_source/api_user_me_data_source.dart';
+import '../../model/UserMe.dart';
+import '../user_me_data_source/api_user_me_data_source.dart';
 
 class UserMeRepository {
 

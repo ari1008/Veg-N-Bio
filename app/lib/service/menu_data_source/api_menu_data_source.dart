@@ -1,8 +1,7 @@
 
-
-import 'package:app/model/dish.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../../model/dish.dart';
 import '../../utils/dio_service.dart';
 import 'menu_data_source.dart';
 

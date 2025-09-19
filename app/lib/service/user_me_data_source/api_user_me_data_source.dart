@@ -1,11 +1,9 @@
 
-
-import 'package:app/service/user_me_data_source/user_me_data_source.dart';
-import 'package:app/utils/dio_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:vegbio/service/user_me_data_source/user_me_data_source.dart';
 
 import '../../model/UserMe.dart';
-import '../../model/user.dart';
+import '../../utils/dio_service.dart';
 
 class ApiUserMeDataSource implements UserMeDataSource {
   @override

@@ -1,10 +1,10 @@
-import 'package:app/widget/custom_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../model/UserMe.dart';
 import '../shared/user_me_bloc/user_me_bloc.dart';
+import '../widget/custom_scaffold.dart';
 
 class UserMePage extends StatefulWidget {
   const UserMePage({super.key});

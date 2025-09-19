@@ -1,8 +1,7 @@
-import 'package:app/model/chatbot_models.dart';
-import 'package:app/service/chatbot_data_source/chatbot_data_source.dart';
-
 import '../../model/DiagnoseResponse.dart';
 import '../../model/ReportErrorRequest.dart';
+import '../../model/chatbot_models.dart';
+import '../chatbot_data_source/chatbot_data_source.dart';
 
 class ChatbotRepository {
   final ChatbotDataSource remoteDataSource;

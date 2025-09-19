@@ -1,23 +1,23 @@
-import 'package:app/model/dish.dart';
-import 'package:app/model/Review.dart';
-import 'package:app/shared/menu_bloc/menu_bloc.dart';
-import 'package:app/shared/review_bloc/review_bloc.dart';
-import 'package:app/shared/review_bloc/review_state.dart';
-import 'package:app/shared/review_bloc/review_event.dart';
-import 'package:app/shared/user_me_bloc/user_me_bloc.dart';
-import 'package:app/widget/custom_scaffold.dart';
-import 'package:app/widget/review_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../model/ResourceType.dart';
+import '../model/Review.dart';
 import '../model/ReviewListData.dart';
 import '../model/ReviewStats.dart';
+import '../model/dish.dart';
+import '../shared/menu_bloc/menu_bloc.dart';
+import '../shared/review_bloc/review_bloc.dart';
+import '../shared/review_bloc/review_event.dart';
+import '../shared/review_bloc/review_state.dart';
+import '../shared/user_me_bloc/user_me_bloc.dart';
 import '../utils/app_route_enum.dart';
 import '../utils/tuple2.dart';
 import '../widget/compact_rating.dart';
 import '../widget/compact_review_card.dart';
+import '../widget/custom_scaffold.dart';
+import '../widget/review_card.dart';
 import '../widget/review_form_modal.dart';
 
 class MenuPage extends StatefulWidget {

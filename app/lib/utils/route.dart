@@ -1,11 +1,11 @@
-import 'package:app/screen/menu.page.dart';
-import 'package:app/utils/app_route_enum.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screen/chatbot_page.dart';
 import '../screen/login.page.dart';
+import '../screen/menu.page.dart';
 import '../screen/register.page.dart';
 import '../screen/user_me_screen.page.dart';
+import 'app_route_enum.dart';
 
 
 final GoRouter router = GoRouter(

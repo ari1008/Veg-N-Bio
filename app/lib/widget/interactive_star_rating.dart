@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-import 'package:app/widget/star_rating.dart';
 import 'package:flutter/material.dart';
+import 'package:vegbio/widget/star_rating.dart';
 
 class InteractiveStarRating extends StatefulWidget {
   final double initialRating;

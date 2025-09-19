@@ -1,9 +1,10 @@
-import 'package:app/model/chatbot_models.dart';
+
 import 'package:bloc/bloc.dart';
 import 'package:meta/meta.dart';
 
 import '../../model/DiagnoseResponse.dart';
 import '../../model/ReportErrorRequest.dart';
+import '../../model/chatbot_models.dart';
 import '../../service/repository/chatbot_repository.dart';
 
 part 'chatbot_event.dart';

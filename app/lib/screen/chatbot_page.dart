@@ -1,10 +1,9 @@
-import 'package:app/model/chatbot_models.dart';
-import 'package:app/shared/chatbot_bloc/chatbot_bloc.dart';
-import 'package:app/widget/custom_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../model/DiseaseResult.dart';
+import '../shared/chatbot_bloc/chatbot_bloc.dart';
+import '../widget/custom_scaffold.dart';
 
 class ChatbotPage extends StatefulWidget {
   const ChatbotPage({super.key});

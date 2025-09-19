@@ -1,9 +1,10 @@
-import 'package:app/shared/user_login_bloc/user_login_bloc.dart';
-import 'package:app/utils/app_route_enum.dart';
-import 'package:app/widget/custom_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../shared/user_login_bloc/user_login_bloc.dart';
+import '../utils/app_route_enum.dart';
+import '../widget/custom_scaffold.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
